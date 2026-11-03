@@ -1,0 +1,37 @@
+import numpy as np
+
+from benchmarks.tempo_no2.cases import (
+    Case,
+    aoi_bounds,
+    matrix,
+    nearest_indices,
+    prepare_spatial_cases,
+)
+
+
+def test_aoi_bounds_500km_is_about_4_5_degrees_lat():
+    lo, hi, _, _ = aoi_bounds(500)
+    assert abs((hi - lo) - 500 / 110.574) < 1e-9
+
+
+def test_nearest_indices_descending_axis():
+    assert list(nearest_indices(np.array([5.0, 4.0, 3.0, 2.0]), np.array([4.1, 2.4]))) == [1, 3]
+
+
+def test_prepare_spatial_cases_is_deterministic_and_nested(lat, lon):
+    a = prepare_spatial_cases(lat, lon)
+    b = prepare_spatial_cases(lat, lon)
+    assert a.points.equals(b.points)
+    assert len(a.points) == 250
+    assert set(a.windows) == {50, 100, 250, 500}
+
+
+def test_matrix_headline_has_four_one_day_cells():
+    m = matrix(headline_only=True)
+    assert len(m) == 4 and all(c.window == "1d" for c in m)
+
+
+def test_matrix_full_has_week_and_month_only_for_fixed_cells():
+    m = matrix(headline_only=False)
+    assert {(c.workload, c.case_size) for c in m if c.window != "1d"} == {("point", 10), ("aoi", 100)}
+    assert Case("point", 10, "1m") in m
