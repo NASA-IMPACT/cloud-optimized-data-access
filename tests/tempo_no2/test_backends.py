@@ -81,6 +81,7 @@ def test_download_matches_user_stack_and_counts_every_part(granules, cases):
     c = d.counts()
     assert c["request_count"] == 2 * sum(1 + -(-size // part) for size in sizes)
     assert c["bytes_requested"] == 2 * sum(sizes)
+    assert set(d.retrieval_split) == {"download_seconds", "decode_seconds"} and min(d.retrieval_split.values()) > 0
 
 
 def test_user_stack_opens_each_granule_twice_at_most(granules, monkeypatch):

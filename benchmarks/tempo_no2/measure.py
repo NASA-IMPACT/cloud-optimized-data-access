@@ -68,6 +68,7 @@ class TrialRow:
     open_seconds: float | None = None
     discovery_plus_open_seconds: float | None = None
     retrieval_seconds: float | None = None
+    retrieval_split: dict[str, float] = field(default_factory=dict)  # sub-phases of retrieval, for arms that can time them
     processing_seconds: float | None = None
     rendering_seconds: float | None = None
     end_to_end_seconds: float | None = None

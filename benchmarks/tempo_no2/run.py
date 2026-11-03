@@ -204,6 +204,7 @@ def run_trial(
                 selection = b.aoi(observations, window)
                 lat_sel, lon_sel = window
             row.retrieval_seconds = time.perf_counter() - retrieval_start
+            row.retrieval_split = dict(getattr(b, "retrieval_split", {}))
             processing_start = time.perf_counter()
             _ = backends.quality_mask(selection)
             row.processing_seconds = time.perf_counter() - processing_start

@@ -203,3 +203,15 @@ def test_floor_uses_wire_bytes_when_the_count_is_a_static_bound(cases, monkeypat
     row = run_trial(fake_backend_factory, Case("point", 10, "1d"), [0], cases, 0, "cold", probes=probes, arm="virtual_icechunk")
     assert row.request_count_reason.startswith("static") and row.net_rx_bytes == 127_000_000
     assert row.floor_seconds == pytest.approx(5 * 0.015 + 127_000_000 / 86e6, rel=1e-3)
+
+
+def test_run_trial_records_the_retrieval_split_when_the_arm_times_it(cases):
+    class Split(FakeBackend):
+        name = "netcdf_download"
+
+        def __init__(self):
+            self.retrieval_split = {"download_seconds": 0.5, "decode_seconds": 2.0}
+
+    row = run_trial(lambda: Split(), Case("scan", 1, "1d"), [0], cases, 0, "cold", arm="netcdf_download")
+    assert row.retrieval_split == {"download_seconds": 0.5, "decode_seconds": 2.0}
+    assert run_trial(fake_backend_factory, Case("point", 10, "1d"), [0], cases, 0, "cold").retrieval_split == {}

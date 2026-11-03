@@ -416,6 +416,7 @@ class NetcdfDownload:
         self._paths = [store_path(store_spec, url) for url in urls]
         self.part_bytes, self.concurrency = part_bytes, concurrency
         self.settings: dict[str, Any] = {"part_bytes": part_bytes, "concurrency": concurrency, "parse": "h5py file image"}
+        self.retrieval_split: dict[str, float] = {}
 
     def _run(self, observations: list[int], kind: str, lat: Any, lon: Any) -> SelectionResult:
         import asyncio
@@ -423,11 +424,17 @@ class NetcdfDownload:
         from benchmarks.tempo_no2.counters import fetch_object
 
         results = []
+        download = decode = 0.0
         # shortcut: one granule at a time, no overlap of one download with the previous parse; pipeline them if multi-granule cells matter
         for o in observations:
+            start = time.perf_counter()
             data = asyncio.run(fetch_object(self.store, self._paths[o], part_bytes=self.part_bytes, concurrency=self.concurrency))
+            middle = time.perf_counter()
             with h5py.File.in_memory(data) as handle:
                 results.append(_select(handle, kind, lat, lon))
+            download, decode = download + middle - start, decode + time.perf_counter() - middle
+        # decode = open the file image, read and decompress the selection: no network inside it
+        self.retrieval_split = {"download_seconds": download, "decode_seconds": decode}
         return SelectionResult(
             np.asarray([r[0] for r in results], dtype="datetime64[ns]"),
             np.stack([r[1] for r in results]),
