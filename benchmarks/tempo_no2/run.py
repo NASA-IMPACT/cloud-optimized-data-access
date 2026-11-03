@@ -419,6 +419,14 @@ def cmd_discover(args: argparse.Namespace) -> int:
     return 0
 
 
+def _first_granule(payload: dict[str, Any], access: str) -> tuple[Any, str]:
+    """The source store and the first granule's path in it."""
+    arms = ArmFactory(payload, access=access)
+    store = backends.build_store(arms.store_spec())
+    key = payload["granules"][0]["source_url"].split(f"{backends.SOURCE_PREFIX}/", 1)[1]
+    return store, f"{backends.SOURCE_BUCKET}/{key}" if access == "https" else key
+
+
 def cmd_probe(args: argparse.Namespace) -> int:
     import h5py
     from obspec_utils.readers import BlockStoreReader
@@ -426,11 +434,7 @@ def cmd_probe(args: argparse.Namespace) -> int:
 
     from benchmarks.tempo_no2.counters import probe_network, probe_paging
 
-    payload = load_manifest(args.window)
-    arms = ArmFactory(payload, access=args.access)
-    store = backends.build_store(arms.store_spec())
-    key = payload["granules"][0]["source_url"].split(f"{backends.SOURCE_PREFIX}/", 1)[1]
-    path = f"{backends.SOURCE_BUCKET}/{key}" if args.access == "https" else key
+    store, path = _first_granule(load_manifest(args.window), args.access)
     source = probe_network(store, path)
     mirror_store = S3Store(CONFIG.mirror_bucket, region=CONFIG.region, skip_signature=True)
     # RTT only, against whatever object the repository prefix lists first: the
@@ -502,6 +506,18 @@ def _stamp(row: TrialRow, payload: dict[str, Any], run_id: str, session: str) ->
     row.snapshot_id, row.snapshot_tag = payload.get("snapshot_id"), payload.get("snapshot_tag")
 
 
+def cmd_download(args: argparse.Namespace) -> int:
+    from benchmarks.tempo_no2.counters import probe_download
+
+    store, path = _first_granule(load_manifest(args.window), args.access)
+    for part_mib in args.part_mib:
+        for concurrency in args.concurrency:
+            for rep in range(args.reps):
+                out = probe_download(store, path, part_bytes=part_mib * 2**20, concurrency=concurrency)
+                print(json.dumps({"path": path, "rep": rep, **out}), flush=True)
+    return 0
+
+
 def cmd_catalog(args: argparse.Namespace) -> int:
     import earthaccess
 
@@ -571,6 +587,13 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--out", default="results/tempo_no2/probes.json")
     s.add_argument("--access", choices=("s3", "https"), default="s3", help="s3: in us-west-2; https: NASA distribution endpoint, from anywhere")
     s.set_defaults(fn=cmd_probe)
+    s = sub.add_parser("download", help="first granule over the wire in concurrent range reads; one JSON line per run (network)")
+    s.add_argument("--window", choices=list(cases_mod.WINDOWS), default="1d")
+    s.add_argument("--part-mib", type=int, nargs="+", default=[8, 16])
+    s.add_argument("--concurrency", type=int, nargs="+", default=[1, 8, 16, 32])
+    s.add_argument("--reps", type=int, default=3)
+    s.add_argument("--access", choices=("s3", "https"), default="s3", help="s3: in us-west-2; https: NASA distribution endpoint, from anywhere")
+    s.set_defaults(fn=cmd_download)
     s = sub.add_parser("gate", help="exact-equality gate between file arms and the virtual arm (network)")
     s.add_argument("--window", choices=list(cases_mod.WINDOWS), default="1d")
     s.add_argument("--arms", type=parse_arms, default=DEFAULT_ARMS, help="comma-separated arms (default netcdf_tuned,virtual_icechunk; add netcdf_user_stack to include the user stack)")

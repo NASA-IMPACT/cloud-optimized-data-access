@@ -79,3 +79,12 @@ def test_probe_network_picks_an_object_when_no_path_is_given():
     assert first_object(store, "repo") in {"repo/snapshots/a", "repo/chunks/b"}
     out = probe_network(store, None, heads=3, range_reads=0, prefix="repo")
     assert out["rtt_ms_median"] >= 0 and out["bandwidth_mb_s"] is None
+
+
+def test_probe_download_reads_every_byte_in_parts():
+    from benchmarks.tempo_no2.counters import probe_download
+
+    store = obstore.store.MemoryStore()
+    obstore.put(store, "g.nc", b"z" * 1000)
+    out = probe_download(store, "g.nc", part_bytes=300, concurrency=2)  # 4 parts, the last one short
+    assert out["size_bytes"] == 1000 and out["seconds"] > 0

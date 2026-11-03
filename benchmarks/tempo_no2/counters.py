@@ -158,3 +158,32 @@ def probe_network(
         total_s += time.perf_counter() - t0
         total_bytes += len(memoryview(buf))
     return {"rtt_ms_median": rtt_ms, "bandwidth_mb_s": total_bytes / total_s / 1e6}
+
+
+def probe_download(store: Any, path: str, *, part_bytes: int = 16 * 2**20, concurrency: int = 16) -> dict[str, float | int]:
+    """Whole object over the wire: one HEAD, then ``part_bytes`` ranges, ``concurrency`` in flight.
+
+    The "download it all, then parse in memory" bound. Bytes are counted and
+    dropped, so this times the transfer, not memory. Network.
+    """
+    import asyncio
+
+    import obstore
+
+    async def run() -> tuple[int, float]:
+        t0 = time.perf_counter()
+        size = (await obstore.head_async(store, path))["size"]
+        gate = asyncio.Semaphore(concurrency)
+
+        async def part(start: int) -> int:
+            async with gate:
+                buf = await obstore.get_range_async(store, path, start=start, end=min(start + part_bytes, size))
+                return len(memoryview(buf))
+
+        got = sum(await asyncio.gather(*(part(s) for s in range(0, size, part_bytes))))
+        if got != size:
+            raise RuntimeError(f"read {got} of {size} bytes")
+        return size, time.perf_counter() - t0
+
+    size, seconds = asyncio.run(run())
+    return {"size_bytes": size, "part_bytes": part_bytes, "concurrency": concurrency, "seconds": seconds, "mb_s": size / seconds / 1e6}
