@@ -361,7 +361,7 @@ class ArmFactory:
             return lambda: backends.NetcdfTuned(urls, self.store_spec(), **tuned_settings)
         if arm == "virtual_icechunk":
             icechunk_settings = {k: v for k, v in self.settings.items() if k.startswith("icechunk_")}
-            zarr_settings = {k: v for k, v in self.settings.items() if k == "zarr_concurrency"}
+            zarr_settings = {k: v for k, v in self.settings.items() if k in ("zarr_concurrency", "zarrs_pipeline")}
             return lambda: backends.VirtualIcechunk(
                 backends.pinned_session(backends.open_mirror_repo(access, icechunk_settings), snapshot).store, self.manifest, **zarr_settings
             )

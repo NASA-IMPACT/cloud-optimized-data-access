@@ -458,14 +458,26 @@ class _VirtualSelection:
 class VirtualIcechunk(_VirtualSelection):
     name = "virtual_icechunk"
 
-    def __init__(self, session_store: Any, manifest: pd.DataFrame, zarr_concurrency: int | None = None) -> None:
+    def __init__(
+        self, session_store: Any, manifest: pd.DataFrame, zarr_concurrency: int | None = None, zarrs_pipeline: bool = False
+    ) -> None:
         import zarr
 
         if zarr_concurrency is not None:
             # zarr-python's cap on outstanding chunk requests (default 10); a tuning factor, recorded per row
             zarr.config.set({"async.concurrency": int(zarr_concurrency)})
+        if zarrs_pipeline:
+            # zarrs decodes chunks in Rust, in parallel, without the interpreter lock. Keys are set
+            # one by one: replacing the whole codec_pipeline block drops zarr's own batch_size.
+            zarr.config.set({
+                "codec_pipeline.path": "zarrs.ZarrsCodecPipeline",
+                "codec_pipeline.chunk_concurrent_minimum": 4,
+                "codec_pipeline.strict": False,
+            })
         self.settings: dict[str, Any] = {
-            "client": "icechunk", "chunks": None, "zarr_concurrency": zarr.config.get("async.concurrency"),
+            "client": "icechunk", "chunks": None,
+            "zarr_concurrency": zarr.config.get("async.concurrency"),
+            "codec_pipeline": "zarrs" if zarrs_pipeline else "zarr",
         }
         super().__init__(xr.open_zarr(session_store, consolidated=False, chunks=None), manifest)
 

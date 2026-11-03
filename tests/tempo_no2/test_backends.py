@@ -204,3 +204,17 @@ def test_icechunk_config_overrides(virtual_repo):
     repo, _, _ = virtual_repo
     cfg = icechunk_config(repo, {"icechunk_concurrency": 32, "icechunk_decodes": 8})
     assert cfg.get_partial_values_concurrency == 32 and cfg.max_concurrent_requests == 32 and cfg.max_concurrent_decodes == 8
+
+
+def test_virtual_arm_can_use_the_zarrs_codec_pipeline(virtual_repo, manifest, cases):
+    import zarr
+
+    repo, snap, _ = virtual_repo
+    default = VirtualIcechunk(pinned_session(repo, snap).store, manifest).aoi([0, 1], cases.windows[1])
+    try:
+        v = VirtualIcechunk(pinned_session(repo, snap).store, manifest, zarrs_pipeline=True)
+        assert v.settings["codec_pipeline"] == "zarrs"
+        np.testing.assert_array_equal(v.aoi([0, 1], cases.windows[1]).no2, default.no2)
+        assert zarr.config.get("codec_pipeline.batch_size") is not None  # zarr's own keys survive
+    finally:
+        zarr.config.set({"codec_pipeline.path": "zarr.core.codec_pipeline.BatchedCodecPipeline"})

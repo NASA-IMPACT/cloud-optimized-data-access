@@ -63,7 +63,10 @@ factor at a time and record it in `arm_settings`:
 - tuned arm: `block_size`, `max_workers`, `page_buf_size`
 - Icechunk arm: `zarr_concurrency` (zarr-python's cap on outstanding chunk
   requests, default 10), `icechunk_concurrency` (Icechunk's partial-value
-  and request concurrency), `icechunk_decodes` (concurrent manifest decodes)
+  and request concurrency), `icechunk_decodes` (concurrent manifest
+  decodes), `zarrs_pipeline` (decode through zarrs' Rust codec pipeline,
+  in parallel and without the interpreter lock; verified equal to the
+  default pipeline on the local fixture store)
 
 ## Assumptions
 

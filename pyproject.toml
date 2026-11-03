@@ -23,6 +23,7 @@ dependencies = [
     "scipy",
     "matplotlib",
     "dask",
+    "zarrs>=0.2.3",
 ]
 
 [dependency-groups]

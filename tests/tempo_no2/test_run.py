@@ -177,9 +177,9 @@ def test_arm_factory_passes_settings_to_the_virtual_arm(monkeypatch):
     monkeypatch.setattr(backends, "open_mirror_repo", lambda access="s3", settings=None: captured.setdefault("settings", settings) or object())
     monkeypatch.setattr(backends, "pinned_session", lambda repo, snapshot: type("S", (), {"store": None})())
     monkeypatch.setattr(backends, "VirtualIcechunk", lambda store, manifest, **kw: captured.setdefault("kw", kw))
-    ArmFactory({"granules": [{"source_url": "s3://b/k.nc"}], "snapshot_id": "x"}, {"zarr_concurrency": 64, "icechunk_concurrency": 32}).factory("virtual_icechunk")()
+    ArmFactory({"granules": [{"source_url": "s3://b/k.nc"}], "snapshot_id": "x"}, {"zarr_concurrency": 64, "icechunk_concurrency": 32, "zarrs_pipeline": True}).factory("virtual_icechunk")()
     assert captured["settings"] == {"icechunk_concurrency": 32}  # only the Icechunk keys reach the repository open
-    assert captured["kw"] == {"zarr_concurrency": 64}
+    assert captured["kw"] == {"zarr_concurrency": 64, "zarrs_pipeline": True}
 
 
 def test_floor_uses_wire_bytes_when_the_count_is_a_static_bound(cases, monkeypatch):
