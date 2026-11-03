@@ -31,25 +31,13 @@ uv run python -m benchmarks.tempo_no2.analyze results/tempo_no2/<id>
 cd decks/coda-presentation && npm install && npm run build
 ```
 
-**From a laptop.** Add `--access https` to `probe`, `gate`, `smoke`, `trial`
-and `orchestrate`. The mirror is anonymous and the virtual chunks are then
-read from NASA's distribution endpoint with your Earthdata bearer token,
-exactly as the TEMPO HTTPS quickstart does, so everything runs from
-anywhere. Rows record `access=https` and the summary keeps the two
-transports apart: a laptop run adds cross-region latency and the
-endpoint's own limits, so it is a different row, not a cheaper version of
-the in-region one. The user-stack arm's request count is null over HTTPS
-(no botocore hook on the HTTPS filesystem); the tuned arm still counts.
+From a laptop, add `--access https`: the virtual chunks are read from
+NASA's distribution endpoint with your Earthdata token, and rows are
+labelled so they never mix with in-region numbers.
 
-Headline timing runs on one dedicated EC2 instance, the same type for all
-three sessions; `probe`, `gate`, `smoke` and the estimate can run on
-CodeBuild or the Hub. The orchestrator never starts a matrix without
-printing its estimate and receiving `--yes`, and it runs the CMR catalog
-timings as part of the matrix. Commit `results/tempo_no2/<id>/`,
-`results/tempo_no2/latest.json`, `results/tempo_no2/probes.json`, the
-manifest and coordinates under `benchmarks/tempo_no2/manifests/`,
-`benchmarks/tempo_no2/expected/requests.json`, and the deck's
-`public/results` and `public/figures` copies after `analyze`.
+Headline timing runs on one dedicated EC2 instance. After `analyze`,
+commit `results/tempo_no2/`, the manifests, `expected/requests.json`, and
+the deck's `public/results` and `public/figures`.
 
 The protocol, including assumptions and what would change the conclusion,
 is `benchmarks/tempo_no2/README.md`.
