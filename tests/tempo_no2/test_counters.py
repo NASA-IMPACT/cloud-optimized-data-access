@@ -68,3 +68,14 @@ def test_probe_paging_false_for_plain_file(tmp_path):
         f["x"] = [1]
     with h5py.File(tmp_path / "p.h5") as f:
         assert probe_paging(f) is False
+
+
+def test_probe_network_picks_an_object_when_no_path_is_given():
+    from benchmarks.tempo_no2.counters import first_object, probe_network
+
+    store = obstore.store.MemoryStore()
+    obstore.put(store, "repo/snapshots/a", b"x" * 100)
+    obstore.put(store, "repo/chunks/b", b"y" * 100)
+    assert first_object(store, "repo") in {"repo/snapshots/a", "repo/chunks/b"}
+    out = probe_network(store, None, heads=3, range_reads=0, prefix="repo")
+    assert out["rtt_ms_median"] >= 0 and out["bandwidth_mb_s"] is None

@@ -391,7 +391,9 @@ def cmd_probe(args: argparse.Namespace) -> int:
     path = f"{backends.SOURCE_BUCKET}/{key}" if args.access == "https" else key
     source = probe_network(store, path)
     mirror_store = S3Store(CONFIG.mirror_bucket, region=CONFIG.region, skip_signature=True)
-    mirror = probe_network(mirror_store, f"{CONFIG.mirror_prefix}/config.yaml", range_reads=0)
+    # RTT only, against whatever object the repository prefix lists first: the
+    # Icechunk layout under the prefix is not something to guess.
+    mirror = probe_network(mirror_store, None, range_reads=0, prefix=CONFIG.mirror_prefix)
     with BlockStoreReader(store, path) as reader, h5py.File(reader, "r") as f:
         paged = probe_paging(f)
     out = {

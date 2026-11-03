@@ -119,14 +119,29 @@ def probe_paging(h5file: Any) -> bool:
     return strategy == h5py.h5f.FSPACE_STRATEGY_PAGE
 
 
-def probe_network(store: Any, path: str, *, heads: int = 20, range_reads: int = 5, range_bytes: int = 16 * 2**20) -> dict[str, float | None]:
+def first_object(store: Any, prefix: str | None = None) -> str:
+    """The first object a listing under ``prefix`` returns; raises if there is none."""
+    import obstore
+
+    for page in obstore.list(store, prefix=prefix, chunk_size=1):
+        for meta in page:
+            return str(meta["path"])
+    raise FileNotFoundError(f"no objects under {prefix!r}")
+
+
+def probe_network(
+    store: Any, path: str | None, *, heads: int = 20, range_reads: int = 5, range_bytes: int = 16 * 2**20, prefix: str | None = None
+) -> dict[str, float | None]:
     """Median RTT (ms) from HEADs and bandwidth (MB/s) from large range reads.
 
     ``store`` is an obstore store; ``path`` an object of at least
-    ``range_bytes`` bytes. Network.
+    ``range_bytes`` bytes, or ``None`` to probe whatever object a listing
+    under ``prefix`` returns first (RTT only makes sense then). Network.
     """
     import obstore
 
+    if path is None:
+        path = first_object(store, prefix)
     rtts = []
     for _ in range(heads):
         t0 = time.perf_counter()
