@@ -182,6 +182,17 @@ def test_arm_factory_passes_settings_to_the_virtual_arm(monkeypatch):
     assert captured["kw"] == {"zarr_concurrency": 64, "zarrs_pipeline": True}
 
 
+def test_arm_factory_opens_only_the_first_n_granules(monkeypatch):
+    from benchmarks.tempo_no2 import backends
+    from benchmarks.tempo_no2.run import ArmFactory
+
+    monkeypatch.setattr(backends, "_earthaccess_filesystem", lambda access="s3": None)
+    monkeypatch.setattr(backends, "NetcdfUserStack", lambda urls, fs: urls)
+    arms = ArmFactory({"granules": [{"source_url": f"s3://b/{i}.nc"} for i in range(3)], "snapshot_id": "x"})
+    assert arms.factory("netcdf_user_stack", 1)() == ["s3://b/0.nc"]
+    assert len(arms.factory("netcdf_user_stack")()) == 3
+
+
 def test_floor_uses_wire_bytes_when_the_count_is_a_static_bound(cases, monkeypatch):
     from benchmarks.tempo_no2 import run as run_mod
 

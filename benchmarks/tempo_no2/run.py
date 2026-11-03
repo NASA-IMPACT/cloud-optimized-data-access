@@ -346,10 +346,11 @@ class ArmFactory:
     def session(self) -> Any:
         return backends.pinned_session(self.repo, self.payload["snapshot_id"])
 
-    def factory(self, arm: str) -> Callable[[], Backend]:
+    def factory(self, arm: str, n_granules: int | None = None) -> Callable[[], Backend]:
         """Every factory opens its own store and repository inside the timed region,
-        so no arm starts a 'cold' trial on a repository this process already warmed."""
-        urls = self.source_urls()
+        so no arm starts a 'cold' trial on a repository this process already warmed.
+        ``n_granules`` opens only the first n files (a scan of n observations)."""
+        urls = self.source_urls()[:n_granules]
         snapshot = self.payload["snapshot_id"]
         access = self.access
         if arm == "noop":
@@ -481,7 +482,8 @@ def cmd_trial(args: argparse.Namespace) -> int:
     spatial = arms.spatial()
     probes = json.loads(Path(args.probes).read_text()) if args.probes else None
     observations = list(range(len(payload["granules"])))
-    factory = arms.factory(args.arm)
+    # a scan reads only its first case_size observations, so the user stack need not open the rest
+    factory = arms.factory(args.arm, args.case.case_size if args.case.workload == "scan" else None)
     warmed = prepare_backend(factory, args.case, observations, spatial, args.cache)
     row = run_trial(factory, args.case, observations, spatial, args.rep, args.cache, probes=probes, backend=warmed, arm=args.arm)
     row.access = args.access
