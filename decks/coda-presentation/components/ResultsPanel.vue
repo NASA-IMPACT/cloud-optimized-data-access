@@ -16,11 +16,15 @@ onMounted(async () => {
   }
 })
 
-const oneDay = computed(() => (summary.value?.cells ?? []).filter(c => c.window === '1d' && c.cache_state === 'cold'))
-const fixedCells = computed(() => (summary.value?.cells ?? []).filter(c =>
-  c.cache_state === 'cold' && ((c.workload === 'point' && c.case_size === 10) || (c.workload === 'aoi' && c.case_size === 100))))
-const headline = computed(() => (summary.value?.speedups ?? []).find(s =>
-  s.baseline_arm === 'netcdf_user_stack' && s.workload === 'point' && s.case_size === 10 && s.window === '1d'))
+// Headline cells only: default arm settings, and not the once-per-session checker arm.
+const plain = computed(() => (summary.value?.cells ?? []).filter(c =>
+  c.cache_state === 'cold' && c.arm !== 'virtual_manifeststore' && Object.keys(c.arm_settings ?? {}).length === 0))
+const oneDay = computed(() => plain.value.filter(c => c.window === '1d'))
+const fixedCells = computed(() => plain.value.filter(c =>
+  (c.workload === 'point' && c.case_size === 10) || (c.workload === 'aoi' && c.case_size === 100)))
+const speedupLines = computed(() => (summary.value?.speedups ?? []).filter(s =>
+  ['netcdf_user_stack', 'netcdf_tuned'].includes(s.baseline_arm) && s.workload === 'point' && s.case_size === 10 && s.window === '1d'))
+const requests = c => (c.request_count == null ? '—' : (c.request_count_kind === 'static-minimum' ? '≥ ' : '') + fmtInt(c.request_count))
 const prov = computed(() => summary.value?.provenance ?? {})
 const fmt = (x, d = 1) => (x == null ? '—' : Number(x).toFixed(d))
 const fmtInt = x => (x == null ? '—' : Math.round(x).toLocaleString())
@@ -45,13 +49,14 @@ const fmtInt = x => (x == null ? '—' : Math.round(x).toLocaleString())
         <tbody>
           <tr v-for="c in fixedCells" :key="c.arm + c.workload + c.window">
             <td>{{ c.arm }}</td><td>{{ c.workload }}/{{ c.case_size }}</td><td>{{ c.window }}</td>
-            <td>{{ fmtInt(c.request_count) }}</td><td>{{ fmtInt(c.bytes_requested) }}</td><td>{{ fmt(c.floor_ratio) }}</td>
+            <td>{{ requests(c) }}</td><td>{{ fmtInt(c.bytes_requested) }}</td><td>{{ fmt(c.floor_ratio) }}</td>
           </tr>
         </tbody>
       </table>
-      <p v-if="headline" class="mt-3">
-        {{ headline.baseline_arm }} → virtual_icechunk: <b>{{ fmt(headline.speedup_median) }}×</b>
-        (95% CI {{ fmt(headline.ci_low) }}–{{ fmt(headline.ci_high) }}, n={{ headline.n }})
+      <p class="text-xs mt-1">"≥" marks a static minimum computed from the store's chunk grid, not a measured count.</p>
+      <p v-for="s in speedupLines" :key="s.baseline_arm" class="mt-2">
+        {{ s.baseline_arm }} → virtual_icechunk: <b>{{ fmt(s.speedup_median) }}×</b>
+        (95% CI {{ fmt(s.ci_low) }}–{{ fmt(s.ci_high) }}, n={{ s.n }}<span v-if="!s.detectable">; inside session spread, no detectable difference</span>)
       </p>
     </template>
   </div>

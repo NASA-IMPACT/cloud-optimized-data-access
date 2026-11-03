@@ -14,10 +14,20 @@ def smoke_rows():
 
 def test_plan_headline_counts():
     p = plan(headline_only=True)
-    assert len(p) == 4 * 3 * 10 * 2 + 4 * 3 + 1 + 1 + 10  # trials + warm-ups + manifeststore check + noop + 1-worker factor
+    # trials + manifeststore check + noop + 1-worker factor + catalog timings (one window at 3 reps)
+    assert len(p) == 4 * 3 * 10 * 2 + 1 + 1 + 10 + 3
     assert p[0].arm == "noop"
-    assert all(s.cache_state == "warm_process" for s in p if s.rep == -1)
+    assert not any(s.rep == -1 for s in p)  # warm-ups happen inside the warm_process trial itself
     assert sum(1 for s in p if s.settings.get("max_workers") == 1) == 10
+    assert sum(1 for s in p if s.arm == "catalog") == 3
+
+
+def test_default_command_maps_catalog_to_its_subcommand():
+    from benchmarks.tempo_no2.orchestrate import TrialSpec, default_command
+    from benchmarks.tempo_no2.cases import Case
+
+    cmd = default_command(TrialSpec("catalog", Case("point", 1, "1d"), 2, "cold"), "r", "1")
+    assert "catalog" in cmd and "--rep" in cmd and "1" == cmd[cmd.index("--rep") + 1] and "--window" in cmd
 
 
 def test_plan_is_shuffled_within_blocks_deterministically():
@@ -28,24 +38,29 @@ def test_plan_is_shuffled_within_blocks_deterministically():
 
 def test_estimate_scales_by_observations():
     e = estimate(plan(True), smoke_rows(), {"1d": 12, "1w": 84, "1m": 360}, 0.192)
-    assert e.trials == 264 and e.requests_total > 0 and e.usd > 0 and e.hours > 0
+    assert e.trials == 255 and e.requests_total > 0 and e.usd > 0 and e.hours > 0
     assert set(e.requests_by_bucket) == {"asdc", "mirror"}
 
 
 def test_orchestrate_keeps_failed_trial_as_row(tmp_path):
     specs = plan(True)[:3]
     py = sys.executable
+    specs = plan(True)[:5]
     cmds = {
         0: [py, "-c", "print('{bad json')"],
         1: [py, "-c", "import sys; sys.exit(3)"],
         2: [py, "-c", "import time; time.sleep(5)"],
+        3: [py, "-c", "print('null')"],  # valid JSON, not a row
+        4: [py, "-c", "import json; print(json.dumps({'status': 'RuntimeError: no creds'}))"],  # row without an arm
     }
     failed = run_matrix(specs, "r", "1", tmp_path, trial_command=lambda s: cmds[specs.index(s)], timeout_s=1)
     rows = [TrialRow.from_json(line) for line in (tmp_path / "results.jsonl").read_text().splitlines()]
-    assert failed == 3 and len(rows) == 3
-    assert all(r.status.startswith("subprocess:") for r in rows)
-    assert all((tmp_path / "timelines" / f"{i}.json").exists() for i in range(3))
-    assert rows[0].arm == specs[0].arm and rows[0].run_id == "r" and rows[0].session_id == "1"
+    assert failed == 5 and len(rows) == 5
+    assert all(r.status.startswith("subprocess:") for r in rows[:4])
+    assert all((tmp_path / "timelines" / f"{i}.json").exists() for i in range(5))
+    assert [r.arm for r in rows] == [s.arm for s in specs]
+    assert rows[4].status == "RuntimeError: no creds" and rows[4].arm_settings == dict(specs[4].settings)
+    assert rows[0].run_id == "r" and rows[0].session_id == "1"
 
 
 def test_host_sampler_produces_timeline():

@@ -71,3 +71,21 @@ def test_publish_writes_deck_copy_and_pointer(tmp_path, results_small_dir):
     assert copy["run_id"] == pointer["run_id"] == "small"
     assert {p.name for p in (deck / "public" / "figures").iterdir()} == {"phases.svg", "requests.svg", "floor_ratio.svg", "speedup.svg"}
     assert (results_small_dir / "summary.json").exists()
+
+
+def test_catalog_rows_feed_file_arm_phases_and_never_become_cells(results_small):
+    s = summarize(results_small)
+    assert not any(c["arm"] == "catalog" for c in s["cells"])
+    assert cell(s, "netcdf_user_stack", 10)["phases"]["catalog"] == pytest.approx(1.6)
+    assert cell(s, "virtual_icechunk", 10)["phases"]["catalog"] == 0.0
+
+
+def test_failed_checker_arm_does_not_abort_summary(results_small):
+    s = summarize(results_small)  # the fixture has a failed virtual_manifeststore row and no ok one
+    assert all(c["arm"] != "virtual_manifeststore" for c in s["cells"])
+
+
+def test_cells_carry_request_count_kind(results_small):
+    s = summarize(results_small)
+    assert cell(s, "virtual_icechunk", 10)["request_count_kind"] == "static-minimum"
+    assert cell(s, "netcdf_tuned", 10)["request_count_kind"] == "measured"

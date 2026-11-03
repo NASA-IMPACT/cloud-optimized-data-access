@@ -34,7 +34,13 @@ def trace_counts(trace: RequestTrace) -> dict[str, Any]:
 
 
 class S3fsCounter:
-    """Counts botocore calls and retries on an s3fs filesystem's client."""
+    """Counts botocore calls on an s3fs filesystem's client.
+
+    Bytes are counted for GetObject only: a HeadObject reply carries the
+    whole object's size, not bytes moved. Retries come from each reply's
+    ``ResponseMetadata.RetryAttempts``; botocore's ``needs-retry`` event
+    fires on successes too, so it is not used.
+    """
 
     def __init__(self) -> None:
         self.request_count = 0
@@ -43,22 +49,18 @@ class S3fsCounter:
         self.retries = 0
 
     def attach(self, fs: Any) -> None:
-        events = fs.s3.meta.events
-        events.register("after-call", self._after_call)
-        events.register("needs-retry", self._needs_retry)
+        fs.s3.meta.events.register("after-call", self._after_call)
 
     def _after_call(self, parsed: Any = None, model: Any = None, **_: Any) -> None:
         self.request_count += 1
         name = getattr(model, "name", "unknown")
         self.by_method[name] = self.by_method.get(name, 0) + 1
-        if isinstance(parsed, dict) and isinstance(parsed.get("ContentLength"), int):
-            self.bytes_requested += parsed["ContentLength"]
-
-    def _needs_retry(self, response: Any = None, **_: Any) -> None:
-        # botocore fires needs-retry after every attempt; a non-None
-        # response means a retryable outcome was seen and a retry follows.
-        if response is not None:
-            self.retries += 1
+        if isinstance(parsed, dict):
+            if name == "GetObject" and isinstance(parsed.get("ContentLength"), int):
+                self.bytes_requested += parsed["ContentLength"]
+            attempts = parsed.get("ResponseMetadata", {}).get("RetryAttempts")
+            if isinstance(attempts, int):
+                self.retries += attempts
 
     def counts(self) -> dict[str, Any]:
         return {

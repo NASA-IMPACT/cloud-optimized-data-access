@@ -25,7 +25,7 @@ def test_trace_counts_from_memory_store():
     assert c["requests_by_method"]["head"] == 1
 
 
-def test_s3fs_counter_counts_after_call_events():
+def test_s3fs_counter_counts_bytes_for_gets_only_and_retries_from_metadata():
     class Events:  # minimal fake of botocore's event emitter
         def __init__(self):
             self.h = []
@@ -40,13 +40,16 @@ def test_s3fs_counter_counts_after_call_events():
     c = S3fsCounter()
     c.attach(fs)
     handlers = dict(fs.s3.meta.events.h)
-    handlers["after-call"](parsed={"ContentLength": 10}, model=types.SimpleNamespace(name="GetObject"))
-    handlers["needs-retry"](response=(None, {"Error": {"Code": "SlowDown"}}), attempts=1)
-    handlers["needs-retry"](response=None, attempts=2)
+    assert set(handlers) == {"after-call"}  # needs-retry fires on successes too; it is not used
+    get = types.SimpleNamespace(name="GetObject")
+    head = types.SimpleNamespace(name="HeadObject")
+    handlers["after-call"](parsed={"ContentLength": 10, "ResponseMetadata": {"RetryAttempts": 0}}, model=get)
+    handlers["after-call"](parsed={"ContentLength": 50_000_000, "ResponseMetadata": {"RetryAttempts": 2}}, model=head)
     counts = c.counts()
-    assert counts["request_count"] == 1
-    assert counts["bytes_requested"] == 10
-    assert counts["retries"] == 1
+    assert counts["request_count"] == 2
+    assert counts["bytes_requested"] == 10  # a HEAD's ContentLength is the object size, not bytes moved
+    assert counts["retries"] == 2
+    assert counts["requests_by_method"] == {"GetObject": 1, "HeadObject": 1}
 
 
 def test_retry_log_counter_counts_retry_lines():

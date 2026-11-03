@@ -42,6 +42,7 @@ from benchmarks.tempo_no2.measure import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_PATH = Path(__file__).parent / "expected" / "requests.json"
+COORDINATES_PATH = Path(__file__).parent / "manifests" / "coordinates.npz"
 ARMS = ("netcdf_user_stack", "netcdf_tuned", "virtual_icechunk", "virtual_manifeststore", "noop")
 SMOKE_CASES = (Case("point", 1, "1d"), Case("aoi", 50, "1d"))
 PACKAGES = (
@@ -148,10 +149,12 @@ def run_trial(
     probes: dict[str, Any] | None = None,
     instance_rate_usd_h: float = DEFAULT_INSTANCE_RATE,
     backend: Backend | None = None,
+    arm: str | None = None,
 ) -> TrialRow:
-    """One timed trial. ``backend`` reuses an object (warm_process); else the factory builds one."""
+    """One timed trial. ``backend`` reuses an object (warm_process); else the factory builds one.
+    ``arm`` names the row even when the factory raises before a backend exists."""
     row = TrialRow(
-        workload=case.workload, case_size=case.case_size, window=case.window,
+        arm=arm, workload=case.workload, case_size=case.case_size, window=case.window,
         observation_count=len(observations), repetition=rep, cache_state=cache_state,
         cache_drop="not attempted",
     )
@@ -190,7 +193,11 @@ def run_trial(
         if b.name == "noop":
             row.request_count, row.bytes_requested, row.request_count_reason = 0, 0, "noop"
         elif counts is None:
-            row.request_count, row.bytes_requested = virtual_minimum(observations, lat_sel, lon_sel)
+            if hasattr(b, "static_minimum"):
+                minimum = b.static_minimum(observations, lat_sel, lon_sel)
+                row.request_count, row.bytes_requested = minimum["request_count"], minimum["bytes_requested"]
+            else:
+                row.request_count, row.bytes_requested = virtual_minimum(observations, lat_sel, lon_sel)
             row.request_count_reason = "static minimum; not instrumented"
         else:
             row.request_count, row.bytes_requested = counts["request_count"], counts["bytes_requested"]
@@ -216,8 +223,6 @@ def run_trial(
         row.error = row.status[:2000]
     finally:
         retry_log.detach()
-    if row.arm is None:
-        row.arm = getattr(backend_factory, "arm_name", None)
     row.load_avg_1m = (load_before + os.getloadavg()[0]) / 2
     steal_after = cpu_steal_seconds()
     row.cpu_steal_s = None if steal_before is None or steal_after is None else steal_after - steal_before
@@ -226,6 +231,21 @@ def run_trial(
     else:
         row.net_rx_bytes_reason = "shared host"
     return row
+
+
+def prepare_backend(
+    backend_factory: Callable[[], Backend], case: Case, observations: list[int], spatial: SpatialCases, cache_state: str
+) -> Backend | None:
+    """For ``warm_process``: build the backend and run one discarded selection so the
+    timed trial sees warm caches, pools and connections. ``cold`` gets nothing."""
+    if cache_state != "warm_process":
+        return None
+    backend = backend_factory()
+    if case.workload == "point":
+        backend.point(observations, spatial.points.iloc[: case.case_size])
+    else:
+        backend.aoi(observations, spatial.windows[case.case_size])
+    return backend
 
 
 def _net_rx() -> int:
@@ -268,35 +288,40 @@ class ArmFactory:
         return backends.pinned_session(self.repo, self.payload["snapshot_id"])
 
     def factory(self, arm: str) -> Callable[[], Backend]:
+        """Every factory opens its own store and repository inside the timed region,
+        so no arm starts a 'cold' trial on a repository this process already warmed."""
         urls = self.manifest["source_url"].tolist()
+        snapshot = self.payload["snapshot_id"]
         if arm == "noop":
             return noop_factory
         if arm == "netcdf_user_stack":
             return lambda: backends.NetcdfUserStack(urls)
         if arm == "netcdf_tuned":
-            return lambda: backends.NetcdfTuned(urls, backends.source_registry(self.credentials.get()), **self.settings)
+            return lambda: backends.NetcdfTuned(urls, backends.source_store_spec(self.credentials.get()), **self.settings)
         if arm == "virtual_icechunk":
-            return lambda: backends.VirtualIcechunk(self.session().store, self.manifest)
+            return lambda: backends.VirtualIcechunk(backends.pinned_session(backends.open_mirror_repo(), snapshot).store, self.manifest)
         if arm == "virtual_manifeststore":
-            return lambda: backends.VirtualManifestStore(
-                self.session(), self._stores(), f"s3://{CONFIG.mirror_bucket}/{CONFIG.mirror_prefix}/chunks", self.manifest
-            )
+
+            def manifeststore() -> Backend:
+                repo = backends.open_mirror_repo()
+                stores = backends.container_stores(repo, self.credentials.get())
+                stores[f"s3://{CONFIG.mirror_bucket}"] = backends.build_store({"kind": "s3", "bucket": CONFIG.mirror_bucket})
+                return backends.VirtualManifestStore(
+                    backends.pinned_session(repo, snapshot), stores,
+                    f"s3://{CONFIG.mirror_bucket}/{CONFIG.mirror_prefix}/chunks", self.manifest,
+                )
+
+            return manifeststore
         raise SystemExit(f"unknown arm {arm!r}; one of {ARMS}")
 
-    def _stores(self) -> dict[str, Any]:
-        from obstore.store import S3Store
-
-        c = self.credentials.get()
-        return {
-            backends.SOURCE_PREFIX: S3Store(
-                backends.SOURCE_BUCKET, region=CONFIG.region, access_key_id=c["accessKeyId"],
-                secret_access_key=c["secretAccessKey"], token=c["sessionToken"],
-            ),
-            f"s3://{CONFIG.mirror_bucket}": S3Store(CONFIG.mirror_bucket, region=CONFIG.region, skip_signature=True),
-        }
-
     def spatial(self) -> SpatialCases:
-        return spatial_from_dataset(backends.VirtualIcechunk(self.session().store, self.manifest).dataset)
+        """Point and window indices from the coordinates saved at discover time, so
+        trials need no store access before timing starts."""
+        path = COORDINATES_PATH
+        if not path.exists():
+            raise SystemExit(f"{path} missing: run `run.py discover` in us-west-2 first")
+        with np.load(path) as npz:
+            return cases_mod.prepare_spatial_cases(npz["latitude"], npz["longitude"])
 
 
 # --- subcommands --------------------------------------------------------------
@@ -306,6 +331,9 @@ def cmd_discover(args: argparse.Namespace) -> int:
     frame = cases_mod.discover(args.window)
     repo = backends.open_mirror_repo()
     snapshot_id, tag = backends.resolve_pin(repo)
+    dataset = backends.VirtualIcechunk(backends.pinned_session(repo, snapshot_id).store, frame).dataset
+    COORDINATES_PATH.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(COORDINATES_PATH, latitude=np.asarray(dataset["latitude"].values), longitude=np.asarray(dataset["longitude"].values))
     if tag is None:
         print(f"warning: tag {CONFIG.snapshot_tag} not found on mirror; pinning main tip {snapshot_id}", file=sys.stderr)
     payload = {
@@ -334,8 +362,8 @@ def cmd_probe(args: argparse.Namespace) -> int:
 
     payload = load_manifest(args.window)
     arms = ArmFactory(payload)
-    registry = backends.source_registry(arms.credentials.get())
-    store, path = registry.resolve(payload["granules"][0]["source_url"])
+    store = backends.build_store(backends.source_store_spec(arms.credentials.get()))
+    path = payload["granules"][0]["source_url"].split(f"{backends.SOURCE_PREFIX}/", 1)[1]
     source = probe_network(store, path)
     mirror_store = S3Store(CONFIG.mirror_bucket, region=CONFIG.region, skip_signature=True)
     mirror = probe_network(mirror_store, f"{CONFIG.mirror_prefix}/config.yaml", range_reads=0)
@@ -378,7 +406,9 @@ def cmd_trial(args: argparse.Namespace) -> int:
     spatial = arms.spatial()
     probes = json.loads(Path(args.probes).read_text()) if args.probes else None
     observations = list(range(len(payload["granules"])))
-    row = run_trial(arms.factory(args.arm), args.case, observations, spatial, args.rep, args.cache, probes=probes)
+    factory = arms.factory(args.arm)
+    warmed = prepare_backend(factory, args.case, observations, spatial, args.cache)
+    row = run_trial(factory, args.case, observations, spatial, args.rep, args.cache, probes=probes, backend=warmed, arm=args.arm)
     _stamp(row, payload, args.run_id, args.session)
     print(row.to_json())
     return 0 if row.status == "ok" else 1
@@ -400,7 +430,7 @@ def cmd_catalog(args: argparse.Namespace) -> int:
     for rep in range(args.rep):
         t0 = time.perf_counter()
         results = earthaccess.search_data(concept_id=CONFIG.concept_id, temporal=cases_mod.WINDOWS[args.window], count=-1)
-        row = TrialRow(arm="catalog", workload="catalog", window=args.window, repetition=rep, cache_state="cold",
+        row = TrialRow(arm="catalog", workload="point", case_size=1, window=args.window, repetition=rep, cache_state="cold",
                        observation_count=len(results), catalog_seconds=time.perf_counter() - t0, status="ok")
         _stamp(row, payload, args.run_id, args.session)
         print(row.to_json())
@@ -417,7 +447,7 @@ def cmd_smoke(args: argparse.Namespace) -> int:
     for case in SMOKE_CASES:
         for arm in ARMS:
             for rep in range(2):
-                row = run_trial(arms.factory(arm), case, [0], spatial, rep, "cold")
+                row = run_trial(arms.factory(arm), case, [0], spatial, rep, "cold", arm=arm)
                 _stamp(row, payload, args.run_id, "smoke")
                 rows.append(row)
                 print(row.to_json())

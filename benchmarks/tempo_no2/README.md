@@ -29,8 +29,8 @@ their results to: requests × per-request latency.
 
 | Arm | Access path | Comparison | Isolates |
 |---|---|---|---|
-| `netcdf_user_stack` | `earthaccess.open()` + `xarray.open_mfdataset(engine="h5netcdf")`, default settings | user stack → `virtual_icechunk` | what a user gains today (headline) |
-| `netcdf_tuned` | h5py over an 8 MiB block reader, granules read concurrently (8 workers), points batched per chunk, 16 MiB page buffer when the file is paged | tuned → `virtual_icechunk` | the access layer against a competent client |
+| `netcdf_user_stack` | earthaccess's S3 filesystem + `xarray.open_datatree(engine="h5netcdf")` per granule, default settings | user stack → `virtual_icechunk` | what a user gains today (headline) |
+| `netcdf_tuned` | h5py over an 8 MiB block reader, one **process** per granule (8 at a time; h5py holds one global lock, so threads cannot overlap network reads), points batched per chunk, 16 MiB page buffer when the file is paged | tuned → `virtual_icechunk` | the access layer against a competent client |
 | `netcdf_tuned` at 1 worker | the same, serial over granules | 1 worker → 8 workers | concurrency alone |
 | `virtual_icechunk` | Icechunk store of VirtualiZarr references, opened at the pinned snapshot from the public Source Cooperative mirror, `xarray` selection | | the access layer as deployed |
 | `virtual_manifeststore` | the same references through VirtualiZarr's `ManifestStore` with a request tracer | once per session | validates the Icechunk arm's static request minimum; never a headline |
@@ -59,29 +59,40 @@ documentation and the study's own discussion thread describe users running.
 - Granule-to-store time matching: nearest store time within 4 minutes,
   one-to-one; the maximum offset is recorded.
 - The Icechunk arm's request count is a **static minimum**: 4 metadata
-  objects (repository config, snapshot, manifest, `zarr.json`) plus the
-  chunk references the selection intersects, computed from the chunk grid
-  (`(1, 738, 1938)` for float64, `(1, 984, 2584)` for the flag). It is
-  reported as "≥ minimum, not instrumented" and checked once per session
-  against `virtual_manifeststore`'s traced count.
+  objects, the coordinate chunks read at open, and the data chunks the
+  selection intersects, all computed from the store's own chunk metadata
+  at run time. It is reported as "≥ minimum, not instrumented". Once per
+  session `virtual_manifeststore` reads the same selection through a traced
+  registry; its count must equal the static **data-chunk** count (the
+  ManifestStore path reads coordinates and metadata through the parsed
+  session, outside the tracer), which is what the local test asserts.
 
 ## Measurement
 
-Every trial is a fresh process (`cold`) or a reused backend in one process
-(`warm_process`). Each row records:
+Every trial is a fresh process. `cold` builds the backend inside the timed
+region; `warm_process` builds it, runs one discarded selection, and then
+times a second one, so caches, pools and connections are warm. Each arm
+opens its own store and repository inside the timed region; nothing is
+pre-opened. The `noop` arm, once per session, measures the per-trial
+fixed cost that remains (process start, imports, credential fetch) and is
+the baseline subtracted from each session's network byte counts. Each row
+records:
 
 - phases: `catalog_seconds` (CMR search, measured by `run.py catalog` in
-  unpinned trials; the pinned trials read a committed manifest),
-  `open_seconds`, `retrieval_seconds`, `processing_seconds`,
-  `end_to_end_seconds`;
+  unpinned trials the orchestrator schedules per window; the summary adds
+  the per-window median to the file arms' first phase; the virtual arm's
+  coordinate lookup is inside its open and is shown as 0), `open_seconds`,
+  `retrieval_seconds`, `processing_seconds`, `end_to_end_seconds`;
 - resources: CPU user and system seconds and peak RSS from `getrusage` in
   the trial process; load average and CPU steal around the trial;
 - transport: `request_count` and `bytes_requested` (obspec-utils tracer
-  for the tuned and ManifestStore arms; botocore event hooks for the user
-  stack; the static minimum for Icechunk), `requests_by_method`, `retries`
-  (botocore retry events; `obstore`/`icechunk` retry log lines; null with
-  a reason when a library does not log them), and `net_rx_bytes` on a
-  dedicated host, minus the session's `noop` row;
+  for the tuned and ManifestStore arms, one entry per byte range; a
+  botocore `after-call` hook for the user stack, counting bytes for
+  GetObject only; the static minimum for Icechunk), `requests_by_method`,
+  `retries` (botocore `ResponseMetadata.RetryAttempts` for the user stack;
+  null with a reason for the Rust clients, which do not surface retries to
+  Python), and `net_rx_bytes` on a dedicated host, minus the session's
+  `noop` row;
 - the floor: `serial_phases × median RTT + bytes ÷ measured bandwidth`,
   from `run.py probe` at the start of each session (20 HEADs and 5 × 16 MiB
   range reads against the source bucket; HEADs against the mirror).

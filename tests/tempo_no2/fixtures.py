@@ -101,7 +101,7 @@ def make_virtual_store(tmp_path: Path, granules: list[Path]) -> tuple[icechunk.R
     prefix = f"file://{granule_dir}/"
     chunk_store = icechunk.local_filesystem_store(str(granule_dir))
     config = icechunk.RepositoryConfig.default()
-    config.set_virtual_chunk_container(icechunk.VirtualChunkContainer(prefix, chunk_store))
+    config.set_virtual_chunk_container(icechunk.VirtualChunkContainer(prefix, chunk_store, name="local"))
     repo = icechunk.Repository.open_or_create(
         storage=icechunk.local_filesystem_storage(str(tmp_path / "repo")),
         config=config,

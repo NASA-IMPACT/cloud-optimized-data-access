@@ -7,6 +7,7 @@ from benchmarks.tempo_no2.run import (
     check_expected,
     noop_factory,
     parse_case,
+    prepare_backend,
     run_trial,
     write_expected,
 )
@@ -22,12 +23,14 @@ def cases():
 class FakeBackend:
     name = "virtual_icechunk"
     settings = {}
+    calls = 0
 
     def _result(self, n_obs, shape):
         t = np.array(["2025-03-14T12:00"] * n_obs, dtype="datetime64[ns]")
         return SelectionResult(t, np.ones((n_obs, *shape)), np.zeros((n_obs, *shape)))
 
     def point(self, observations, point_rows):
+        self.calls += 1
         return self._result(len(observations), (len(point_rows),))
 
     def aoi(self, observations, window):
@@ -75,3 +78,19 @@ def test_smoke_expected_file_roundtrip(tmp_path):
     write_expected(tmp_path / "e.json", {("netcdf_tuned", "point:1:1d"): 7})
     assert check_expected(tmp_path / "e.json", {("netcdf_tuned", "point:1:1d"): 9}) == [("netcdf_tuned", "point:1:1d", 7, 9)]
     assert check_expected(tmp_path / "e.json", {("netcdf_tuned", "point:1:1d"): 7}) == []
+
+
+def test_run_trial_names_the_arm_when_the_factory_raises(cases):
+    def boom():
+        raise RuntimeError("no creds")
+
+    row = run_trial(boom, Case("aoi", 50, "1d"), [0], cases, 0, "cold", arm="netcdf_tuned")
+    assert row.status.startswith("RuntimeError") and row.arm == "netcdf_tuned"
+
+
+def test_prepare_backend_warms_once_for_warm_process(cases):
+    b = prepare_backend(fake_backend_factory, Case("point", 10, "1d"), [0], cases, "warm_process")
+    assert isinstance(b, FakeBackend) and b.calls == 1
+    assert prepare_backend(fake_backend_factory, Case("point", 10, "1d"), [0], cases, "cold") is None
+    row = run_trial(fake_backend_factory, Case("point", 10, "1d"), [0], cases, 0, "warm_process", backend=b)
+    assert row.status == "ok" and b.calls == 2 and row.open_seconds < 0.01

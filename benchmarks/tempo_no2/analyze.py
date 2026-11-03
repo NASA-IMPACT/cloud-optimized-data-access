@@ -25,6 +25,8 @@ from benchmarks.tempo_no2.measure import FIELDS
 PHASES = ("catalog", "open", "retrieval", "processing")
 BASELINES = ("netcdf_user_stack", "netcdf_tuned")
 VIRTUAL = "virtual_icechunk"
+HEADLINE_ARMS = (*BASELINES, VIRTUAL)
+SPECIAL_ARMS = ("noop", "catalog")
 FIGURES = ("phases.svg", "requests.svg", "floor_ratio.svg", "speedup.svg")
 
 
@@ -71,14 +73,17 @@ def summarize(df: pd.DataFrame) -> dict[str, Any]:
     ok = df[(df["status"] == "ok") & (df["repetition"].fillna(0) >= 0)]
     noop = ok[ok["arm"] == "noop"]
     noop_rx = noop.groupby("session_id")["net_rx_bytes"].median().to_dict() if not noop.empty else {}
-    trials = ok[(ok["arm"] != "noop") & (ok["cache_state"] == "cold")]
+    # CMR search time per window, from the unpinned catalog trials; it is the file
+    # arms' first phase. The virtual arm's coordinate lookup is inside its open.
+    catalog = ok[ok["arm"] == "catalog"].groupby("window")["catalog_seconds"].median().to_dict()
+    trials = ok[(~ok["arm"].isin(SPECIAL_ARMS)) & (ok["cache_state"] == "cold")]
     keys = ["arm", "settings_key", "workload", "case_size", "window"]
 
-    # Review focus 5: an arm with no ok rows in a cell where others have some.
-    attempted = df[(df["arm"] != "noop") & (df["cache_state"] == "cold") & (df["repetition"].fillna(0) >= 0)]
+    # Review focus 5: a headline arm with no ok rows in a cell where others have some.
+    attempted = df[(df["arm"].isin(HEADLINE_ARMS)) & (df["cache_state"] == "cold") & (df["repetition"].fillna(0) >= 0)]
     for (workload, size, window), group in attempted.groupby(["workload", "case_size", "window"]):
         arms_ok = set(trials[(trials.workload == workload) & (trials.case_size == size) & (trials.window == window)]["arm"])
-        for arm in set(group["arm"]) - arms_ok:
+        for arm in sorted(set(group["arm"]) - arms_ok):
             if arms_ok:
                 raise ValueError(f"no ok rows for arm {arm} in {workload}/{size}/{window}")
 
@@ -90,8 +95,8 @@ def summarize(df: pd.DataFrame) -> dict[str, Any]:
         bw_probe = g["bandwidth_mb_s"].astype(float).median()
         bw_frac = (g["bytes_requested"].astype(float) / e2e / 1e6).median() / bw_probe if bw_probe and not math.isnan(bw_probe) else float("nan")
         floor_ratio = (e2e / g["floor_seconds"].astype(float)).median()
-        rx = g["net_rx_bytes"].astype(float).median()
-        rx_noop = float(np.median(list(noop_rx.values()))) if noop_rx else 0.0
+        # subtract each row's own session's noop baseline before taking the median
+        rx = (g["net_rx_bytes"].astype(float) - g["session_id"].map(noop_rx).fillna(0.0)).median()
         nproc = g["nproc"].astype(float).median()
         max_core = g["cpu_busy_pct_max_core"].astype(float).median()
         cells.append({
@@ -102,10 +107,14 @@ def summarize(df: pd.DataFrame) -> dict[str, Any]:
             "median_s": float(e2e.median()), "p90_s": float(e2e.quantile(0.9)),
             "min_s": float(e2e.min()), "max_s": float(e2e.max()),
             "cov": float(e2e.std(ddof=1) / e2e.mean()) if len(g) > 1 else 0.0,
-            "phases": {p: _nan_to_none(g[f"{p}_seconds"].astype(float).median()) for p in PHASES},
+            "phases": {
+                "catalog": 0.0 if arm.startswith("virtual") else _nan_to_none(catalog.get(window)),
+                **{p: _nan_to_none(g[f"{p}_seconds"].astype(float).median()) for p in PHASES if p != "catalog"},
+            },
             "request_count": _nan_to_none(g["request_count"].astype(float).median()),
+            "request_count_kind": "static-minimum" if g["request_count_reason"].fillna("").str.startswith("static").any() else "measured",
             "bytes_requested": _nan_to_none(g["bytes_requested"].astype(float).median()),
-            "net_rx_bytes": None if math.isnan(rx) else float(rx - rx_noop),
+            "net_rx_bytes": _nan_to_none(rx),
             "retries": _nan_to_none(g["retries"].astype(float).sum()) if g["retries"].notna().any() else None,
             "floor_ratio": _nan_to_none(floor_ratio),
             "cpu_fraction": float(cpu.median()),

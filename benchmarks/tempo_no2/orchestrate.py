@@ -27,6 +27,7 @@ from benchmarks.tempo_no2.run import DEFAULT_INSTANCE_RATE
 
 ARMS = ("netcdf_user_stack", "netcdf_tuned", "virtual_icechunk")
 CHECK_CASE = Case("point", 10, "1d")
+CATALOG_REPS = 3
 CONCURRENCY_FACTOR_CASE = Case("aoi", 100, "1d")
 SMOKE_CASE_SIZE = {"point": 1, "aoi": 50}
 # Smoke-run cases read one observation; AOI request counts scale with the
@@ -59,14 +60,14 @@ def plan(
     for case in matrix(headline_only):
         reps = reps_headline if case in headline else reps_other
         for cache_state in cache_states:
-            if cache_state == "warm_process":
-                specs += [TrialSpec(arm, case, -1, cache_state) for arm in ARMS]
             for rep in range(reps):
                 block = [TrialSpec(arm, case, rep, cache_state) for arm in ARMS]
                 rng.shuffle(block)
                 specs += block
     specs.append(TrialSpec("virtual_manifeststore", CHECK_CASE, 0, "cold"))
     specs += [TrialSpec("netcdf_tuned", CONCURRENCY_FACTOR_CASE, rep, "cold", {"max_workers": 1}) for rep in range(reps_headline)]
+    windows = sorted({c.window for c in matrix(headline_only)})
+    specs += [TrialSpec("catalog", Case("point", 1, w), rep, "cold") for w in windows for rep in range(CATALOG_REPS)]
     return specs
 
 
@@ -166,6 +167,9 @@ class HostSampler:
 
 
 def default_command(spec: TrialSpec, run_id: str = "", session: str = "", probes: str | None = None) -> list[str]:
+    if spec.arm == "catalog":
+        return [sys.executable, "-m", "benchmarks.tempo_no2.run", "catalog", "--window", spec.case.window,
+                "--rep", "1", "--run-id", run_id, "--session", session]
     cmd = [sys.executable, "-m", "benchmarks.tempo_no2.run", "trial", "--arm", spec.arm, "--case", str(spec.case),
            "--rep", str(spec.rep), "--cache", spec.cache_state, "--run-id", run_id, "--session", session]
     if spec.settings:
@@ -200,13 +204,15 @@ def run_matrix(
                 last = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
                 try:
                     row = TrialRow.from_json(last)
-                except (ValueError, TypeError):
+                except Exception:  # not JSON, or JSON that is not an object
                     reason = f"exit {proc.returncode}, unparseable output" if proc.returncode else "unparseable output"
                 if row is not None and proc.returncode and row.status == "ok":
                     row.status = f"subprocess:exit {proc.returncode}"
             except subprocess.TimeoutExpired as error:
                 reason = f"timeout after {timeout_s:.0f} s"
                 stderr_tail = (error.stderr or b"")[-2000:].decode(errors="replace") if isinstance(error.stderr, bytes) else str(error.stderr or "")[-2000:]
+            except Exception as error:  # e.g. OSError spawning the interpreter
+                reason = f"{type(error).__name__}: {error}"
             finally:
                 sampler.stop()
             if row is None:
@@ -214,6 +220,11 @@ def run_matrix(
                                repetition=spec.rep, cache_state=spec.cache_state, arm_settings=dict(spec.settings),
                                status=f"subprocess:{reason}", error=stderr_tail)
             row.run_id, row.session_id = run_id, session
+            row.arm = row.arm or spec.arm
+            if not row.arm_settings:
+                row.arm_settings = dict(spec.settings)
+            if row.repetition is None:
+                row.repetition = spec.rep
             timeline = sampler.timeline()
             path = out_dir / "timelines" / f"{index}.json"
             path.write_text(json.dumps(timeline))
@@ -238,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--yes", action="store_true", help="start the matrix after the estimate")
     p.add_argument("--instance-rate-usd-h", type=float, default=DEFAULT_INSTANCE_RATE)
     p.add_argument("--smoke-results", default="results/tempo_no2/smoke/results.jsonl")
-    p.add_argument("--probes", default=None, help="probes.json from `run.py probe`")
+    p.add_argument("--probes", default="results/tempo_no2/probes.json", help="probes.json from `run.py probe`; without it floor_seconds is null")
     p.add_argument("--out-root", default="results/tempo_no2")
     p.add_argument("--timeout-s", type=float, default=1800)
     args = p.parse_args(argv)
@@ -263,8 +274,11 @@ def main(argv: list[str] | None = None) -> int:
             print("re-run with --yes to start")
         return 0 if args.estimate else 2
     out_dir = Path(args.out_root) / args.run_id
+    probes = args.probes if args.probes and Path(args.probes).exists() else None
+    if probes is None:
+        print(f"warning: no probes file at {args.probes}; floor_seconds will be null (run `run.py probe` first)", file=sys.stderr)
     failed = run_matrix(specs, args.run_id, args.session, out_dir,
-                        trial_command=lambda s: default_command(s, args.run_id, args.session, args.probes),
+                        trial_command=lambda s: default_command(s, args.run_id, args.session, probes),
                         timeout_s=args.timeout_s)
     (Path(args.out_root) / "latest.json").write_text(json.dumps({"run_id": args.run_id}) + "\n")
     print(f"done: {len(specs)} trials, {failed} failed, rows in {out_dir / 'results.jsonl'}")
