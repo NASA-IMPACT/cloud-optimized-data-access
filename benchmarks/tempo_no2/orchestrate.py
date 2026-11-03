@@ -23,7 +23,7 @@ from typing import Any
 
 from benchmarks.tempo_no2.cases import Case, matrix
 from benchmarks.tempo_no2.measure import GRID_SHAPE, VARIABLES, TrialRow, cost_usd, static_minimum_requests
-from benchmarks.tempo_no2.run import DEFAULT_INSTANCE_RATE
+from benchmarks.tempo_no2.run import DEFAULT_ARMS, DEFAULT_INSTANCE_RATE, parse_arms
 
 ARMS = ("netcdf_user_stack", "netcdf_tuned", "virtual_icechunk")
 CHECK_CASE = Case("point", 10, "1d")
@@ -53,7 +53,10 @@ def plan(
     reps_other: int = 5,
     cache_states: tuple[str, ...] = ("cold", "warm_process"),
     seed: int = 20250314,
+    arms: tuple[str, ...] = DEFAULT_ARMS,
 ) -> list[TrialSpec]:
+    """``arms`` restricts the timed arms (the noop, catalog, checker and concurrency
+    specs are kept when their arm is in the list or they are arm-independent)."""
     rng = random.Random(seed)
     specs: list[TrialSpec] = [TrialSpec("noop", Case("point", 1, "1d"), 0, "cold")]
     headline = set(matrix(headline_only=True))
@@ -61,11 +64,13 @@ def plan(
         reps = reps_headline if case in headline else reps_other
         for cache_state in cache_states:
             for rep in range(reps):
-                block = [TrialSpec(arm, case, rep, cache_state) for arm in ARMS]
+                block = [TrialSpec(arm, case, rep, cache_state) for arm in ARMS if arm in arms]
                 rng.shuffle(block)
                 specs += block
-    specs.append(TrialSpec("virtual_manifeststore", CHECK_CASE, 0, "cold"))
-    specs += [TrialSpec("netcdf_tuned", CONCURRENCY_FACTOR_CASE, rep, "cold", {"max_workers": 1}) for rep in range(reps_headline)]
+    if "virtual_icechunk" in arms:
+        specs.append(TrialSpec("virtual_manifeststore", CHECK_CASE, 0, "cold"))
+    if "netcdf_tuned" in arms:
+        specs += [TrialSpec("netcdf_tuned", CONCURRENCY_FACTOR_CASE, rep, "cold", {"max_workers": 1}) for rep in range(reps_headline)]
     windows = sorted({c.window for c in matrix(headline_only)})
     specs += [TrialSpec("catalog", Case("point", 1, w), rep, "cold") for w in windows for rep in range(CATALOG_REPS)]
     return specs
@@ -253,9 +258,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out-root", default="results/tempo_no2")
     p.add_argument("--timeout-s", type=float, default=1800)
     p.add_argument("--access", choices=("s3", "https"), default="s3", help="s3: in us-west-2; https: from anywhere via the distribution endpoint")
+    p.add_argument("--arms", type=parse_arms, default=DEFAULT_ARMS, help="comma-separated timed arms (default netcdf_tuned,virtual_icechunk; add netcdf_user_stack to include the user stack)")
     args = p.parse_args(argv)
 
-    specs = plan(args.headline_only)
+    specs = plan(args.headline_only, arms=args.arms)
     smoke_path = Path(args.smoke_results)
     if not smoke_path.exists():
         print(f"no smoke results at {smoke_path}: run `run.py smoke` first", file=sys.stderr)

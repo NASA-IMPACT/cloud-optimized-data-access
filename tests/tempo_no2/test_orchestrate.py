@@ -6,6 +6,7 @@ from benchmarks.tempo_no2.measure import TrialRow
 from benchmarks.tempo_no2.orchestrate import HostSampler, estimate, main, plan, run_matrix
 
 SMOKE = Path(__file__).parent.parent / "fixtures" / "smoke-results.jsonl"
+ALL_TIMED = ("netcdf_user_stack", "netcdf_tuned", "virtual_icechunk")
 
 
 def smoke_rows():
@@ -14,8 +15,9 @@ def smoke_rows():
 
 def test_plan_headline_counts():
     p = plan(headline_only=True)
-    # trials + manifeststore check + noop + 1-worker factor + catalog timings (one window at 3 reps)
-    assert len(p) == 4 * 3 * 10 * 2 + 1 + 1 + 10 + 3
+    # two default arms: trials + manifeststore check + noop + 1-worker factor + catalog timings (one window at 3 reps)
+    assert len(p) == 4 * 2 * 10 * 2 + 1 + 1 + 10 + 3
+    assert not any(s.arm == "netcdf_user_stack" for s in p)
     assert p[0].arm == "noop"
     assert not any(s.rep == -1 for s in p)  # warm-ups happen inside the warm_process trial itself
     assert sum(1 for s in p if s.settings.get("max_workers") == 1) == 10
@@ -32,12 +34,12 @@ def test_default_command_maps_catalog_to_its_subcommand():
 
 def test_plan_is_shuffled_within_blocks_deterministically():
     assert plan(True) == plan(True)
-    arms = [s.arm for s in plan(True) if s.rep >= 0 and s.arm != "noop"][:6]
+    arms = [s.arm for s in plan(True, arms=ALL_TIMED) if s.rep >= 0 and s.arm != "noop"][:6]
     assert arms != sorted(arms) or arms != ["netcdf_tuned", "netcdf_user_stack", "virtual_icechunk"] * 2
 
 
 def test_estimate_scales_by_observations():
-    e = estimate(plan(True), smoke_rows(), {"1d": 12, "1w": 84, "1m": 360}, 0.192)
+    e = estimate(plan(True, arms=ALL_TIMED), smoke_rows(), {"1d": 12, "1w": 84, "1m": 360}, 0.192)
     assert e.trials == 255 and e.requests_total > 0 and e.usd > 0 and e.hours > 0
     assert set(e.requests_by_bucket) == {"asdc", "mirror"}
 
@@ -86,3 +88,17 @@ def test_default_command_threads_access_through():
 
     cmd = default_command(TrialSpec("netcdf_tuned", Case("point", 1, "1d"), 0, "cold"), "r", "1", access="https")
     assert cmd[cmd.index("--access") + 1] == "https"
+
+
+def test_plan_can_add_the_user_stack():
+    from benchmarks.tempo_no2.orchestrate import plan
+
+    p = plan(headline_only=True, arms=ALL_TIMED)
+    assert any(s.arm == "netcdf_user_stack" for s in p)
+    assert len(p) == 4 * 3 * 10 * 2 + 1 + 1 + 10 + 3
+
+
+def test_main_accepts_an_arms_list(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    rc = main(["--run-id", "r", "--headline-only", "--smoke-results", str(SMOKE), "--arms", ",".join(ALL_TIMED), "--estimate"])
+    assert rc == 0 and "trials: 255" in capsys.readouterr().out

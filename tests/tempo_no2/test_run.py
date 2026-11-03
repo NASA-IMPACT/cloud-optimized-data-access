@@ -132,3 +132,11 @@ def test_arm_factory_spatial_comes_from_the_manifest_grid():
         "latitude": {"first": 20.0, "last": 50.0, "size": 60}, "longitude": {"first": -120.0, "last": -70.0, "size": 80}}}
     spatial = ArmFactory(payload).spatial()
     assert spatial.latitudes.shape == (60,) and spatial.longitudes.shape == (80,)
+
+
+def test_parse_arms_validates_names():
+    from benchmarks.tempo_no2.run import parse_arms
+
+    assert parse_arms("netcdf_tuned,virtual_icechunk") == ("netcdf_tuned", "virtual_icechunk")
+    with pytest.raises(Exception, match="bogus"):
+        parse_arms("netcdf_tuned,bogus")

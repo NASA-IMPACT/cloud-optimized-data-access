@@ -43,6 +43,9 @@ from benchmarks.tempo_no2.measure import (
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_PATH = Path(__file__).parent / "expected" / "requests.json"
 ARMS = ("netcdf_user_stack", "netcdf_tuned", "virtual_icechunk", "virtual_manifeststore", "noop")
+# The user stack opens every granule through fsspec's read-ahead cache and is
+# slow by design; it is opt-in so routine runs stay short.
+DEFAULT_ARMS = ("netcdf_tuned", "virtual_icechunk")
 SMOKE_CASES = (Case("point", 1, "1d"), Case("aoi", 50, "1d"))
 PACKAGES = (
     "earthaccess", "earthaccess-auth", "icechunk", "xarray", "zarr", "h5py", "h5netcdf",
@@ -68,6 +71,15 @@ def parse_case(s: str) -> Case:
     if workload not in ("point", "aoi") or window not in cases_mod.WINDOWS:
         raise argparse.ArgumentTypeError(f"bad case {s!r}; want workload:size:window")
     return Case(workload, int(size), window)  # type: ignore[arg-type]
+
+
+def parse_arms(value: str) -> tuple[str, ...]:
+    """Comma-separated arm names; every name must be one of ARMS."""
+    arms = tuple(a.strip() for a in value.split(",") if a.strip())
+    bad = [a for a in arms if a not in ARMS]
+    if bad:
+        raise argparse.ArgumentTypeError(f"unknown arm(s) {bad}; choose from {list(ARMS)}")
+    return arms
 
 
 def write_expected(path: Path, counts: dict[tuple[str, str], int]) -> None:
@@ -424,9 +436,11 @@ def cmd_gate(args: argparse.Namespace) -> int:
     backends._progress("gate: opening the virtual store")
     virtual = arms.factory("virtual_icechunk")()
     baselines = []
-    for name in ("netcdf_user_stack", "netcdf_tuned"):
+    for name in [a for a in ("netcdf_user_stack", "netcdf_tuned") if a in args.arms]:
         backends._progress(f"gate: building {name}")
         baselines.append(arms.factory(name)())
+    if not baselines:
+        raise SystemExit("gate: --arms must include at least one file arm (netcdf_user_stack, netcdf_tuned)")
     cases = [c for c in cases_mod.matrix(headline_only=False) if c.window == args.window]
     backends._progress(f"gate: {len(cases)} cases over {len(payload['granules'])} observations; one line per comparison follows")
     table = run_gate(baselines, virtual, cases, spatial, len(payload["granules"]))
@@ -483,7 +497,7 @@ def cmd_smoke(args: argparse.Namespace) -> int:
     rows: list[TrialRow] = []
     t0 = time.perf_counter()
     for case in SMOKE_CASES:
-        for arm in ARMS:
+        for arm in [a for a in ARMS if a in args.arms or a in ("virtual_manifeststore", "noop")]:
             for rep in range(2):
                 row = run_trial(arms.factory(arm), case, [0], spatial, rep, "cold", arm=arm)
                 row.access = args.access
@@ -531,6 +545,7 @@ def main(argv: list[str] | None = None) -> int:
     s.set_defaults(fn=cmd_probe)
     s = sub.add_parser("gate", help="exact-equality gate between file arms and the virtual arm (network)")
     s.add_argument("--window", choices=list(cases_mod.WINDOWS), default="1d")
+    s.add_argument("--arms", type=parse_arms, default=DEFAULT_ARMS, help="comma-separated arms (default netcdf_tuned,virtual_icechunk; add netcdf_user_stack to include the user stack)")
     s.add_argument("--access", choices=("s3", "https"), default="s3", help="s3: in us-west-2; https: NASA distribution endpoint, from anywhere")
     s.set_defaults(fn=cmd_gate)
     s = sub.add_parser("trial", help="one trial in this process; prints one JSON row (network)")
@@ -552,6 +567,7 @@ def main(argv: list[str] | None = None) -> int:
     s.set_defaults(fn=cmd_catalog)
     s = sub.add_parser("smoke", help="1 observation × smallest cases × all arms × n=2; request-count tripwire (network)")
     s.add_argument("--run-id", default="smoke")
+    s.add_argument("--arms", type=parse_arms, default=DEFAULT_ARMS, help="comma-separated arms (default netcdf_tuned,virtual_icechunk; add netcdf_user_stack to include the user stack)")
     s.add_argument("--out", default="results/tempo_no2/smoke/results.jsonl")
     s.add_argument("--access", choices=("s3", "https"), default="s3", help="s3: in us-west-2; https: NASA distribution endpoint, from anywhere")
     s.set_defaults(fn=cmd_smoke)

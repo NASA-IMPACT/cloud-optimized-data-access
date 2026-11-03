@@ -29,7 +29,7 @@ their results to: requests × per-request latency.
 
 | Arm | Access path | Comparison | Isolates |
 |---|---|---|---|
-| `netcdf_user_stack` | earthaccess's filesystem + `xarray.open_mfdataset(engine="h5netcdf", group="product")`, default settings (fsspec's read-ahead cache fetches a block per HDF5 metadata read; a second open of the root group supplies the time axis) | user stack → `virtual_icechunk` | what a user gains today (headline) |
+| `netcdf_user_stack` (opt-in: `--arms`) | earthaccess's filesystem + `xarray.open_mfdataset(engine="h5netcdf", group="product")`, default settings (fsspec's read-ahead cache fetches a block per HDF5 metadata read; a second open of the root group supplies the time axis). Slow by design, so not in the default arm set | user stack → `virtual_icechunk` | what a user gains today |
 | `netcdf_tuned` | h5py over an 8 MiB block reader, one **process** per granule (8 at a time; h5py holds one global lock, so threads cannot overlap network reads), points batched per chunk, 16 MiB page buffer when the file is paged | tuned → `virtual_icechunk` | the access layer against a competent client |
 | `netcdf_tuned` at 1 worker | the same, serial over granules | 1 worker → 8 workers | concurrency alone |
 | `virtual_icechunk` | Icechunk store of VirtualiZarr references, opened at the pinned snapshot from the public Source Cooperative mirror, `xarray` selection | | the access layer as deployed |

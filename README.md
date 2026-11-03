@@ -25,6 +25,8 @@ uv run python -m benchmarks.tempo_no2.run discover --window 1d   # writes the co
 uv run python -m benchmarks.tempo_no2.run probe                  # RTT, bandwidth, HDF5 paging → results/tempo_no2/probes.json
 uv run python -m benchmarks.tempo_no2.run gate                   # exact-equality gate; must print GATE PASSED
 uv run python -m benchmarks.tempo_no2.run smoke                  # CodeBuild or Hub; < 2 min; records/asserts request counts
+# gate, smoke and orchestrate time netcdf_tuned and virtual_icechunk by default;
+# add --arms netcdf_user_stack,netcdf_tuned,virtual_icechunk for the (slow) user stack
 uv run python -m benchmarks.tempo_no2.orchestrate --run-id <id> --headline-only --estimate   # trials, requests, hours, dollars
 uv run python -m benchmarks.tempo_no2.orchestrate --run-id <id> --session 1 --headline-only --yes   # EC2; reads probes.json
 uv run python -m benchmarks.tempo_no2.analyze results/tempo_no2/<id>
