@@ -59,6 +59,16 @@
   color: white;
 }
 
+/* The accent's text gradient matches the hero gradient, so on it the accent is white and underlined. */
+.slidev-layout.gradient h1 .accent {
+  background: none;
+  -webkit-text-fill-color: white;
+  color: white;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.15em;
+}
+
 .slidev-layout.gradient .eyebrow {
   color: rgba(255, 255, 255, 0.85);
 }
@@ -146,4 +156,29 @@
 .slidev-layout td,
 .slidev-layout th {
   padding: 0.3rem 0.6rem;
+}
+
+/* A source line under a figure from another study. */
+.credits {
+  margin-top: 0.5rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--vz-muted);
+}
+
+/* Cards on the left, an image large enough to read on the right. */
+.beside-image {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.cards.stacked {
+  grid-template-columns: 1fr;
+}
+
+/* the shared 360px figure cap is what fits under a title */
+.slidev-layout .beside-image img.figure {
+  margin: 0;
 }
