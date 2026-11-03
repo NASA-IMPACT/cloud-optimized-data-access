@@ -15,5 +15,12 @@
   },
   "devDependencies": {
     "esbuild": "^0.28.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  },
+  "overrides": {
+    "dompurify": "^3.4.17",
+    "image-size": "^2.0.4"
   }
 }
