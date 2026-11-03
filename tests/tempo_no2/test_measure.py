@@ -72,3 +72,12 @@ def test_host_info_fills_cpu_and_memory_without_proc(monkeypatch):
     info = measure.host_info(imds=False)
     assert info["mem_total_bytes"] and info["mem_total_bytes"] > 0
     assert info["cpu_model"]
+
+
+def test_host_info_marks_jupyterhub_sessions(monkeypatch):
+    from benchmarks.tempo_no2 import measure
+
+    monkeypatch.setenv("JUPYTERHUB_USER", "someone")
+    monkeypatch.setattr(measure, "_imds", lambda path, timeout=0.5: {"instance-type": "r5.xlarge", "placement/availability-zone": "us-west-2a"}[path])
+    info = measure.host_info()
+    assert info["host_kind"] == "jupyterhub" and info["instance_type"] == "r5.xlarge"

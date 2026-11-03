@@ -167,7 +167,7 @@ def run_trial(
     row.host_kind, row.instance_type, row.instance_type_reason = h["host_kind"], h["instance_type"], h["instance_type_reason"]
     row.availability_zone, row.cpu_model, row.nproc, row.mem_total_bytes = h["availability_zone"], h["cpu_model"], h["nproc"], h["mem_total_bytes"]
     load_before, steal_before = os.getloadavg()[0], cpu_steal_seconds()
-    net_before = _net_rx() if h["host_kind"] == "ec2" else None
+    net_before = _net_rx() if h["host_kind"] in ("ec2", "jupyterhub") else None
     retry_log = RetryLogCounter()
     retry_log.attach()
     total_start = time.perf_counter()

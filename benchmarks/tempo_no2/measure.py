@@ -260,6 +260,9 @@ def host_info(imds: bool = True) -> dict[str, Any]:
         info.update(instance_type=itype, availability_zone=_imds("placement/availability-zone"), host_kind="ec2")
     else:
         info["instance_type_reason"] = "imds unreachable"
+    if os.environ.get("JUPYTERHUB_USER"):
+        # a shared node: load and steal are node-wide; network counters are the pod's own
+        info["host_kind"] = "jupyterhub"
     return info
 
 

@@ -176,6 +176,7 @@ not instrumented for request counts; the smoke tripwire keeps a separate
 |---|---|---|
 | `probe`, `gate`, `smoke`, `orchestrate --estimate` | CodeBuild or the JupyterHub | correctness and request counts do not depend on the host |
 | headline sessions | one dedicated us-west-2 EC2 instance, same type for all three sessions | timing needs a quiet host: `load_avg_1m` below 1 and `cpu_steal_s` near 0 on every row, or the session is discarded |
+| a first session on the Hub | rows carry `host_kind=jupyterhub` | the node is shared, so load and steal are node-wide; the pod's own network counters are still recorded. Label such numbers as one shared-host session |
 | analysis and figures | anywhere | reads committed results |
 
 ## What would change the conclusion
