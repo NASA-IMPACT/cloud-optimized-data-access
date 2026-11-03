@@ -3,8 +3,13 @@ on: [push, pull_request]
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   python:
+    name: Python tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -16,6 +21,7 @@ jobs:
       - run: uv sync --frozen
       - run: uv run pytest -q
   hygiene:
+    name: Env-file hygiene
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -25,6 +31,7 @@ jobs:
           persist-credentials: false
       - run: scripts/check_env_hygiene.sh $(git ls-files '.env*')
   deck:
+    name: Deck build
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -41,6 +48,7 @@ jobs:
       - run: npm ci
       - run: npm run build
   zizmor:
+    name: Workflow audit (zizmor)
     runs-on: ubuntu-latest
     permissions:
       contents: read
