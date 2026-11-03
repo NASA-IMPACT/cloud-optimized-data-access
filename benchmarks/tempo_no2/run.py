@@ -123,6 +123,12 @@ def noop_factory() -> Backend:
     return _Noop()
 
 
+def smoke_budget_s(access: str) -> int:
+    """Smoke must stay quick in region; over HTTPS every request costs a redirect
+    through the distribution service, so the budget is wider."""
+    return 900 if access == "https" else 120
+
+
 def serial_phases(arm: str, request_count: int, n_obs: int) -> int:
     """Dependent round trips on the critical path, for the floor model.
 
@@ -494,8 +500,9 @@ def cmd_smoke(args: argparse.Namespace) -> int:
         for r in failed:
             print(f"  {r.arm} {r.workload}:{r.case_size}: {r.status}")
         return 1
-    if elapsed > 120:
-        print("smoke: over the 120 s budget")
+    budget = smoke_budget_s(args.access)
+    if elapsed > budget:
+        print(f"smoke: over the {budget} s budget for --access {args.access}")
         return 1
     expected = EXPECTED_PATH if args.access == "s3" else EXPECTED_PATH.with_name("requests-https.json")
     if not expected.exists():

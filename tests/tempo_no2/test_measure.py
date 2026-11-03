@@ -63,3 +63,12 @@ def test_resource_usage_scales_maxrss_only_on_linux(monkeypatch):
     with resource_usage() as r:
         pass
     assert r.peak_rss_bytes == pytest.approx(raw * 1024, rel=0.05)
+
+
+def test_host_info_fills_cpu_and_memory_without_proc(monkeypatch):
+    from benchmarks.tempo_no2 import measure
+
+    monkeypatch.setattr(measure, "_proc_value", lambda *_: None)  # macOS: no /proc
+    info = measure.host_info(imds=False)
+    assert info["mem_total_bytes"] and info["mem_total_bytes"] > 0
+    assert info["cpu_model"]

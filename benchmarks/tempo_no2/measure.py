@@ -236,11 +236,16 @@ def _imds(path: str, timeout: float = 0.5) -> str | None:
 
 
 def host_info(imds: bool = True) -> dict[str, Any]:
+    import platform
+
+    import psutil
+
     mem = _proc_value("/proc/meminfo", "MemTotal")
     info: dict[str, Any] = {
-        "cpu_model": _proc_value("/proc/cpuinfo", "model name"),
+        # /proc on Linux; platform/psutil elsewhere (macOS has no /proc)
+        "cpu_model": _proc_value("/proc/cpuinfo", "model name") or platform.processor() or platform.machine() or None,
         "nproc": os.cpu_count(),
-        "mem_total_bytes": int(mem.split()[0]) * 1024 if mem else None,
+        "mem_total_bytes": int(mem.split()[0]) * 1024 if mem else int(psutil.virtual_memory().total),
         "instance_type": None,
         "instance_type_reason": None,
         "availability_zone": None,

@@ -117,3 +117,9 @@ def test_run_trial_records_the_count_kind_from_the_backend(cases):
 
     row = run_trial(lambda: Counted(), Case("point", 10, "1d"), [0], cases, 0, "cold", arm="netcdf_tuned")
     assert row.request_count == 7 and row.request_count_reason == "client-ranges"
+
+
+def test_smoke_budget_depends_on_transport():
+    from benchmarks.tempo_no2.run import smoke_budget_s
+
+    assert smoke_budget_s("s3") == 120 and smoke_budget_s("https") == 900
