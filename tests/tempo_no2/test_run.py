@@ -123,3 +123,12 @@ def test_smoke_budget_depends_on_transport():
     from benchmarks.tempo_no2.run import smoke_budget_s
 
     assert smoke_budget_s("s3") == 120 and smoke_budget_s("https") == 900
+
+
+def test_arm_factory_spatial_comes_from_the_manifest_grid():
+    from benchmarks.tempo_no2.run import ArmFactory
+
+    payload = {"granules": [], "snapshot_id": "x", "grid": {
+        "latitude": {"first": 20.0, "last": 50.0, "size": 60}, "longitude": {"first": -120.0, "last": -70.0, "size": 80}}}
+    spatial = ArmFactory(payload).spatial()
+    assert spatial.latitudes.shape == (60,) and spatial.longitudes.shape == (80,)

@@ -139,6 +139,27 @@ def prepare_spatial_cases(
     return SpatialCases(latitudes, longitudes, points, windows)
 
 
+GRID_TOLERANCE_DEG = 1e-4
+
+
+def grid_spec(latitudes: np.ndarray, longitudes: np.ndarray) -> dict[str, dict[str, float | int]]:
+    """Describe the store's regular grid by first, last and size per axis, so the
+    manifest carries no binary coordinate file. Raises if an axis is not linear."""
+    spec = {}
+    for name, values in (("latitude", np.asarray(latitudes, dtype=float)), ("longitude", np.asarray(longitudes, dtype=float))):
+        rebuilt = np.linspace(values[0], values[-1], len(values))
+        worst = float(np.abs(rebuilt - values).max())
+        if worst > GRID_TOLERANCE_DEG:
+            raise ValueError(f"{name} axis is not regular: max deviation {worst:.2e} deg")
+        spec[name] = {"first": float(values[0]), "last": float(values[-1]), "size": int(len(values))}
+    return spec
+
+
+def grid_arrays(spec: dict[str, dict[str, float | int]]) -> tuple[np.ndarray, np.ndarray]:
+    lat, lon = spec["latitude"], spec["longitude"]
+    return np.linspace(lat["first"], lat["last"], int(lat["size"])), np.linspace(lon["first"], lon["last"], int(lon["size"]))
+
+
 HEADLINE_CELLS: tuple[Case, ...] = (
     Case("point", 10, "1d"),
     Case("aoi", 100, "1d"),

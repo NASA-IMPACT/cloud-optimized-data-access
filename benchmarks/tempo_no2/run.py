@@ -42,7 +42,6 @@ from benchmarks.tempo_no2.measure import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_PATH = Path(__file__).parent / "expected" / "requests.json"
-COORDINATES_PATH = Path(__file__).parent / "manifests" / "coordinates.npz"
 ARMS = ("netcdf_user_stack", "netcdf_tuned", "virtual_icechunk", "virtual_manifeststore", "noop")
 SMOKE_CASES = (Case("point", 1, "1d"), Case("aoi", 50, "1d"))
 PACKAGES = (
@@ -345,13 +344,12 @@ class ArmFactory:
         raise SystemExit(f"unknown arm {arm!r}; one of {ARMS}")
 
     def spatial(self) -> SpatialCases:
-        """Point and window indices from the coordinates saved at discover time, so
+        """Point and window indices from the grid recorded at discover time, so
         trials need no store access before timing starts."""
-        path = COORDINATES_PATH
-        if not path.exists():
-            raise SystemExit(f"{path} missing: run `run.py discover` in us-west-2 first")
-        with np.load(path) as npz:
-            return cases_mod.prepare_spatial_cases(npz["latitude"], npz["longitude"])
+        if "grid" not in self.payload:
+            raise SystemExit("manifest has no grid: re-run `run.py discover`")
+        latitudes, longitudes = cases_mod.grid_arrays(self.payload["grid"])
+        return cases_mod.prepare_spatial_cases(latitudes, longitudes)
 
 
 # --- subcommands --------------------------------------------------------------
@@ -362,8 +360,7 @@ def cmd_discover(args: argparse.Namespace) -> int:
     repo = backends.open_mirror_repo()
     snapshot_id, tag = backends.resolve_pin(repo)
     dataset = backends.VirtualIcechunk(backends.pinned_session(repo, snapshot_id).store, frame).dataset
-    COORDINATES_PATH.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(COORDINATES_PATH, latitude=np.asarray(dataset["latitude"].values), longitude=np.asarray(dataset["longitude"].values))
+    grid = cases_mod.grid_spec(np.asarray(dataset["latitude"].values), np.asarray(dataset["longitude"].values))
     if tag is None:
         print(f"warning: tag {CONFIG.snapshot_tag} not found on mirror; pinning main tip {snapshot_id}", file=sys.stderr)
     payload = {
@@ -374,6 +371,7 @@ def cmd_discover(args: argparse.Namespace) -> int:
         "snapshot_id": snapshot_id,
         "snapshot_tag": tag,
         "icechunk_uri": f"s3://{CONFIG.mirror_bucket}/{CONFIG.mirror_prefix}",
+        "grid": grid,
         "granules": frame.to_dict(orient="records"),
     }
     path = cases_mod.manifest_path(args.window)

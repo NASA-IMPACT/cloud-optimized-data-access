@@ -21,7 +21,7 @@ mirror is anonymous; nothing is pasted anywhere.
 
 ```sh
 uv sync
-uv run python -m benchmarks.tempo_no2.run discover --window 1d   # manifest + coordinates; both committed
+uv run python -m benchmarks.tempo_no2.run discover --window 1d   # writes the committed manifest (granules, snapshot, grid)
 uv run python -m benchmarks.tempo_no2.run probe                  # RTT, bandwidth, HDF5 paging → results/tempo_no2/probes.json
 uv run python -m benchmarks.tempo_no2.run gate                   # exact-equality gate; must print GATE PASSED
 uv run python -m benchmarks.tempo_no2.run smoke                  # CodeBuild or Hub; < 2 min; records/asserts request counts

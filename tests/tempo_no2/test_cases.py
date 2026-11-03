@@ -35,3 +35,24 @@ def test_matrix_full_has_week_and_month_only_for_fixed_cells():
     m = matrix(headline_only=False)
     assert {(c.workload, c.case_size) for c in m if c.window != "1d"} == {("point", 10), ("aoi", 100)}
     assert Case("point", 10, "1m") in m
+
+
+def test_grid_spec_roundtrips_a_regular_grid(lat, lon):
+    from benchmarks.tempo_no2.cases import grid_arrays, grid_spec
+
+    spec = grid_spec(lat, lon)
+    assert set(spec) == {"latitude", "longitude"} and spec["latitude"]["size"] == 2950
+    lat2, lon2 = grid_arrays(spec)
+    np.testing.assert_allclose(lat2, lat, atol=1e-9)
+    np.testing.assert_allclose(lon2, lon, atol=1e-9)
+
+
+def test_grid_spec_rejects_an_irregular_axis(lat, lon):
+    import pytest
+
+    from benchmarks.tempo_no2.cases import grid_spec
+
+    bent = lat.copy()
+    bent[1000] += 0.05
+    with pytest.raises(ValueError, match="latitude"):
+        grid_spec(bent, lon)
