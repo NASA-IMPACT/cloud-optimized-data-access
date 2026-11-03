@@ -140,3 +140,17 @@ def test_parse_arms_validates_names():
     assert parse_arms("netcdf_tuned,virtual_icechunk") == ("netcdf_tuned", "virtual_icechunk")
     with pytest.raises(Exception, match="bogus"):
         parse_arms("netcdf_tuned,bogus")
+
+
+def test_scan_case_reads_the_whole_grid_for_its_first_observations_only(cases):
+    seen = {}
+
+    class Scan(FakeBackend):
+        def aoi(self, observations, window):
+            seen["observations"], seen["window"] = list(observations), window
+            return self._result(len(observations), (20, 40))
+
+    row = run_trial(lambda: Scan(), Case("scan", 1, "1d"), [0, 1], cases, 0, "cold", arm="virtual_icechunk")
+    assert row.status == "ok" and row.observation_count == 1
+    assert seen["observations"] == [0] and seen["window"] == cases.full_window
+    assert parse_case("scan:1:1d") == Case("scan", 1, "1d")

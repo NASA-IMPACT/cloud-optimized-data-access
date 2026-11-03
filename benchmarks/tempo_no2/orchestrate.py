@@ -88,6 +88,10 @@ class Estimate:
 def _aoi_chunks(size_km: int) -> int:
     rows = int(size_km / AOI_KM_PER_PIXEL[0])
     cols = int(size_km / AOI_KM_PER_PIXEL[1])
+    return _window_chunks(rows, cols)
+
+
+def _window_chunks(rows: int, cols: int) -> int:
     total = 0
     for chunks, itemsize in VARIABLES.values():
         n, _ = static_minimum_requests(GRID_SHAPE, chunks, [0], slice(0, rows), slice(0, cols), itemsize=itemsize)
@@ -119,11 +123,15 @@ def estimate(
     by_key = {(r.arm, r.workload): r for r in smoke_rows if r.status == "ok" and r.window == "1d"}
     seconds, requests, by_bucket = 0.0, 0, {"asdc": 0, "mirror": 0}
     for s in specs:
-        base = by_key.get((s.arm, s.case.workload)) or by_key.get(("virtual_icechunk", s.case.workload))
+        workload = "aoi" if s.case.workload == "scan" else s.case.workload
+        base = by_key.get((s.arm, workload)) or by_key.get(("virtual_icechunk", workload))
         if base is None:
             continue
-        scale = n_obs[s.case.window] / max(1, base.observation_count or 1)
-        if s.case.workload == "point":
+        obs = s.case.case_size if s.case.workload == "scan" else n_obs[s.case.window]
+        scale = obs / max(1, base.observation_count or 1)
+        if s.case.workload == "scan":
+            scale *= _window_chunks(GRID_SHAPE[1], GRID_SHAPE[2]) / _aoi_chunks(SMOKE_CASE_SIZE["aoi"])
+        elif s.case.workload == "point":
             if spatial is not None:
                 scale *= _point_chunks(spatial, s.case.case_size) / _point_chunks(spatial, SMOKE_CASE_SIZE["point"])
             else:

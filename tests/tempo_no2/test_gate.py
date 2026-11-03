@@ -67,3 +67,7 @@ def test_run_gate_reports_progress_per_comparison(capsys):
     assert list(table["status"]) == ["pass", "pass"]
     err = capsys.readouterr().err
     assert "point:1:1d" in err and "observation 0" in err and "pass" in err and "observation 1" in err
+
+
+def test_gate_scans_observation_zero_with_the_full_window():
+    assert observations_for_gate(Case("scan", 1, "1d"), 12, np.random.default_rng(0)) == [0]

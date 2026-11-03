@@ -16,7 +16,7 @@ def smoke_rows():
 def test_plan_headline_counts():
     p = plan(headline_only=True)
     # two default arms: trials + manifeststore check + noop + 1-worker factor + catalog timings (one window at 3 reps)
-    assert len(p) == 4 * 2 * 10 * 2 + 1 + 1 + 10 + 3
+    assert len(p) == 5 * 2 * 10 * 2 + 1 + 1 + 10 + 3
     assert not any(s.arm == "netcdf_user_stack" for s in p)
     assert p[0].arm == "noop"
     assert not any(s.rep == -1 for s in p)  # warm-ups happen inside the warm_process trial itself
@@ -43,7 +43,7 @@ def test_estimate_scales_by_observations_and_chunks_not_points(lat, lon):
 
     spatial = prepare_spatial_cases(lat, lon)
     e = estimate(plan(True, arms=ALL_TIMED), smoke_rows(), {"1d": 12, "1w": 84, "1m": 360}, 0.192, spatial=spatial)
-    assert e.trials == 255 and e.requests_total > 0 and e.usd > 0 and e.hours > 0
+    assert e.trials == 315 and e.requests_total > 0 and e.usd > 0 and e.hours > 0
     assert set(e.requests_by_bucket) == {"asdc", "mirror"}
     # smoke rows: ~2 s per single-observation trial; a day is 12 observations and 250
     # points touch a few chunks, not 250× the work. The whole headline matrix is well under 3 h.
@@ -104,13 +104,13 @@ def test_plan_can_add_the_user_stack():
 
     p = plan(headline_only=True, arms=ALL_TIMED)
     assert any(s.arm == "netcdf_user_stack" for s in p)
-    assert len(p) == 4 * 3 * 10 * 2 + 1 + 1 + 10 + 3
+    assert len(p) == 5 * 3 * 10 * 2 + 1 + 1 + 10 + 3
 
 
 def test_main_accepts_an_arms_list(tmp_path, capsys, monkeypatch):
     monkeypatch.chdir(tmp_path)
     rc = main(["--run-id", "r", "--headline-only", "--smoke-results", str(SMOKE), "--arms", ",".join(ALL_TIMED), "--estimate"])
-    assert rc == 0 and "trials: 255" in capsys.readouterr().out
+    assert rc == 0 and "trials: 315" in capsys.readouterr().out
 
 
 def test_main_limit_runs_only_the_first_trials(tmp_path, capsys, monkeypatch):
@@ -133,3 +133,13 @@ def test_estimate_respects_limit(tmp_path, capsys, monkeypatch):
     monkeypatch.chdir(tmp_path)
     rc = main(["--run-id", "r", "--headline-only", "--smoke-results", str(SMOKE), "--estimate", "--limit", "10"])
     assert rc == 0 and "trials: 10" in capsys.readouterr().out
+
+
+def test_estimate_scales_a_scan_by_the_whole_grid_not_the_day(lat, lon):
+    from benchmarks.tempo_no2.cases import Case, prepare_spatial_cases
+    from benchmarks.tempo_no2.orchestrate import TrialSpec
+
+    spatial = prepare_spatial_cases(lat, lon)
+    scan = estimate([TrialSpec("netcdf_tuned", Case("scan", 1, "1d"), 0, "cold")], smoke_rows(), {"1d": 12}, 0.192, spatial=spatial)
+    box = estimate([TrialSpec("netcdf_tuned", Case("aoi", 50, "1d"), 0, "cold")], smoke_rows(), {"1d": 12}, 0.192, spatial=spatial)
+    assert scan.requests_total > box.requests_total  # one whole scan touches more chunks than twelve small boxes

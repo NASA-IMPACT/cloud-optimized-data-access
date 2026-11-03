@@ -68,7 +68,7 @@ def host() -> dict[str, Any]:
 
 def parse_case(s: str) -> Case:
     workload, size, window = s.split(":")
-    if workload not in ("point", "aoi") or window not in cases_mod.WINDOWS:
+    if workload not in ("point", "aoi", "scan") or window not in cases_mod.WINDOWS:
         raise argparse.ArgumentTypeError(f"bad case {s!r}; want workload:size:window")
     return Case(workload, int(size), window)  # type: ignore[arg-type]
 
@@ -170,6 +170,8 @@ def run_trial(
 ) -> TrialRow:
     """One timed trial. ``backend`` reuses an object (warm_process); else the factory builds one.
     ``arm`` names the row even when the factory raises before a backend exists."""
+    if case.workload == "scan":
+        observations = observations[: case.case_size]
     row = TrialRow(
         arm=arm, workload=case.workload, case_size=case.case_size, window=case.window,
         observation_count=len(observations), repetition=rep, cache_state=cache_state,
@@ -195,7 +197,7 @@ def run_trial(
                 selection = b.point(observations, point_rows)
                 lat_sel, lon_sel = point_rows["lat_index"].to_numpy(), point_rows["lon_index"].to_numpy()
             else:
-                window = spatial.windows[case.case_size]
+                window = spatial.full_window if case.workload == "scan" else spatial.windows[case.case_size]
                 selection = b.aoi(observations, window)
                 lat_sel, lon_sel = window
             row.retrieval_seconds = time.perf_counter() - retrieval_start
@@ -268,6 +270,8 @@ def prepare_backend(
     backend = backend_factory()
     if case.workload == "point":
         backend.point(observations, spatial.points.iloc[: case.case_size])
+    elif case.workload == "scan":
+        backend.aoi(observations[: case.case_size], spatial.full_window)
     else:
         backend.aoi(observations, spatial.windows[case.case_size])
     return backend

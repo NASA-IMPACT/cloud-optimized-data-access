@@ -45,7 +45,10 @@ MANIFEST_DIR = Path(__file__).parent / "manifests"
 
 @dataclass(frozen=True)
 class Case:
-    workload: Literal["point", "aoi"]
+    """point: the first case_size points; aoi: the case_size-km box; scan: the whole
+    grid for the first case_size observations (the file reader's best case)."""
+
+    workload: Literal["point", "aoi", "scan"]
     case_size: int
     window: str
 
@@ -59,6 +62,10 @@ class SpatialCases:
     longitudes: np.ndarray
     points: pd.DataFrame
     windows: dict[int, tuple[slice, slice]]
+
+    @property
+    def full_window(self) -> tuple[slice, slice]:
+        return slice(0, len(self.latitudes)), slice(0, len(self.longitudes))
 
 
 def aoi_bounds(size_km: float) -> tuple[float, float, float, float]:
@@ -165,6 +172,7 @@ HEADLINE_CELLS: tuple[Case, ...] = (
     Case("aoi", 100, "1d"),
     Case("point", 250, "1d"),
     Case("aoi", 500, "1d"),
+    Case("scan", 1, "1d"),
 )
 
 
@@ -173,6 +181,7 @@ def matrix(headline_only: bool) -> list[Case]:
         return list(HEADLINE_CELLS)
     cases = [Case("point", n, "1d") for n in CONFIG.point_counts]
     cases += [Case("aoi", s, "1d") for s in CONFIG.aoi_sizes_km]
+    cases.append(Case("scan", 1, "1d"))
     for window in ("1w", "1m"):
         cases += [Case("point", 10, window), Case("aoi", 100, window)]
     return cases

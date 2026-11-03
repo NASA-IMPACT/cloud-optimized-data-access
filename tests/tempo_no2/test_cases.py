@@ -26,9 +26,15 @@ def test_prepare_spatial_cases_is_deterministic_and_nested(lat, lon):
     assert set(a.windows) == {50, 100, 250, 500}
 
 
-def test_matrix_headline_has_four_one_day_cells():
+def test_matrix_headline_has_five_one_day_cells_including_a_full_scan():
     m = matrix(headline_only=True)
-    assert len(m) == 4 and all(c.window == "1d" for c in m)
+    assert len(m) == 5 and all(c.window == "1d" for c in m)
+    assert Case("scan", 1, "1d") in m  # the file reader's best case: one whole scan, one observation
+
+
+def test_full_window_covers_the_grid(lat, lon):
+    s = prepare_spatial_cases(lat, lon)
+    assert s.full_window == (slice(0, 2950), slice(0, 7750))
 
 
 def test_matrix_full_has_week_and_month_only_for_fixed_cells():

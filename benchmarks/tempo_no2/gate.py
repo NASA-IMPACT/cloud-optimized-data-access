@@ -69,7 +69,7 @@ def run_gate(
                         rows_ = spatial.points.iloc[: case.case_size]
                         status = gate_observation(arm.point([observation], rows_), virtual.point([observation], rows_))
                     else:
-                        window = spatial.windows[case.case_size]
+                        window = spatial.full_window if case.workload == "scan" else spatial.windows[case.case_size]
                         status = gate_observation(arm.aoi([observation], window), virtual.aoi([observation], window))
                 except Exception as error:  # a mismatch or a read failure is a row, not a crash
                     status = f"fail: {type(error).__name__}: {str(error)[:300]}"

@@ -16,6 +16,13 @@ The claim under test is not "Zarr the format beats netCDF the format". The
 virtual store contains references to the original HDF5 chunks; nothing is
 copied or re-encoded. What changes is the access layer.
 
+The matrix also holds the file reader's best case on purpose: **one whole
+scan, one observation** (`scan:1:1d`). Every other case is a small subset
+across many files, which is the access layer's best ground; a whole-grid
+read of a single granule is where per-chunk requests, the store's open
+cost and the lack of range coalescing count against it. It is a headline
+cell so the slide shows both sides.
+
 ## Who the workload represents
 
 An analyst with an Earthdata login, on a machine in us-west-2 (the VEDA

@@ -21,7 +21,7 @@ const plain = computed(() => (summary.value?.cells ?? []).filter(c =>
   c.cache_state === 'cold' && c.arm !== 'virtual_manifeststore' && Object.keys(c.arm_variant ?? {}).length === 0))
 const oneDay = computed(() => plain.value.filter(c => c.window === '1d'))
 const fixedCells = computed(() => plain.value.filter(c =>
-  (c.workload === 'point' && c.case_size === 10) || (c.workload === 'aoi' && c.case_size === 100)))
+  (c.workload === 'point' && c.case_size === 10) || (c.workload === 'aoi' && c.case_size === 100) || c.workload === 'scan'))
 const speedupLines = computed(() => (summary.value?.speedups ?? []).filter(s =>
   ['netcdf_user_stack', 'netcdf_tuned'].includes(s.baseline_arm) && s.workload === 'point' && s.case_size === 10 && s.window === '1d'))
 const requests = c => (c.request_count == null ? '—' : (c.request_count_kind === 'static-minimum' ? '≥ ' : '') + fmtInt(c.request_count))
