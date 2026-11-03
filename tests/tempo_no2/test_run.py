@@ -94,3 +94,11 @@ def test_prepare_backend_warms_once_for_warm_process(cases):
     assert prepare_backend(fake_backend_factory, Case("point", 10, "1d"), [0], cases, "cold") is None
     row = run_trial(fake_backend_factory, Case("point", 10, "1d"), [0], cases, 0, "warm_process", backend=b)
     assert row.status == "ok" and b.calls == 2 and row.open_seconds < 0.01
+
+
+def test_uninstrumented_file_arm_reports_null_count_with_reason(cases):
+    class Https(FakeBackend):
+        name = "netcdf_user_stack"
+
+    row = run_trial(lambda: Https(), Case("point", 10, "1d"), [0], cases, 0, "cold", arm="netcdf_user_stack")
+    assert row.status == "ok" and row.request_count is None and "not instrumented" in row.request_count_reason

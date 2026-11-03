@@ -192,13 +192,15 @@ def run_trial(
         counts = b.counts()
         if b.name == "noop":
             row.request_count, row.bytes_requested, row.request_count_reason = 0, 0, "noop"
-        elif counts is None:
-            if hasattr(b, "static_minimum"):
-                minimum = b.static_minimum(observations, lat_sel, lon_sel)
-                row.request_count, row.bytes_requested = minimum["request_count"], minimum["bytes_requested"]
-            else:
-                row.request_count, row.bytes_requested = virtual_minimum(observations, lat_sel, lon_sel)
+        elif counts is None and hasattr(b, "static_minimum"):
+            minimum = b.static_minimum(observations, lat_sel, lon_sel)
+            row.request_count, row.bytes_requested = minimum["request_count"], minimum["bytes_requested"]
             row.request_count_reason = "static minimum; not instrumented"
+        elif counts is None and b.name.startswith("virtual"):
+            row.request_count, row.bytes_requested = virtual_minimum(observations, lat_sel, lon_sel)
+            row.request_count_reason = "static minimum (pinned grid); not instrumented"
+        elif counts is None:
+            row.request_count_reason = f"not instrumented ({b.name} over this transport)"
         else:
             row.request_count, row.bytes_requested = counts["request_count"], counts["bytes_requested"]
             row.requests_by_method = counts.get("requests_by_method", {})
@@ -269,19 +271,36 @@ def spatial_from_dataset(dataset: Any) -> SpatialCases:
 
 
 class ArmFactory:
-    """Builds backends for the arms from a manifest, sharing credentials and the mirror repo."""
+    """Builds backends for the arms from a manifest. ``access`` is "s3" (in
+    us-west-2) or "https" (NASA's distribution endpoint, from anywhere)."""
 
-    def __init__(self, payload: dict[str, Any], settings: dict[str, Any] | None = None) -> None:
+    def __init__(self, payload: dict[str, Any], settings: dict[str, Any] | None = None, access: str = "s3") -> None:
         self.payload = payload
         self.manifest = pd.DataFrame(payload["granules"])
         self.settings = settings or {}
-        self.credentials = CredentialCache()
+        self.access = access
+        self.credentials = CredentialCache() if access == "s3" else None
+        self._client_options: dict[str, Any] | None = None
         self._repo: Any = None
+
+    def client_options(self) -> dict[str, Any] | None:
+        if self.access == "https" and self._client_options is None:
+            self._client_options = backends._https_client_options()
+        return self._client_options
+
+    def source_urls(self) -> list[str]:
+        urls = self.manifest["source_url"].tolist()
+        return [backends.https_url(u) for u in urls] if self.access == "https" else urls
+
+    def store_spec(self) -> dict[str, Any]:
+        if self.access == "https":
+            return backends.source_store_spec(None, "https", self.client_options())
+        return backends.source_store_spec(self.credentials.get())
 
     @property
     def repo(self) -> Any:
         if self._repo is None:
-            self._repo = backends.open_mirror_repo()
+            self._repo = backends.open_mirror_repo(self.access)
         return self._repo
 
     def session(self) -> Any:
@@ -290,21 +309,22 @@ class ArmFactory:
     def factory(self, arm: str) -> Callable[[], Backend]:
         """Every factory opens its own store and repository inside the timed region,
         so no arm starts a 'cold' trial on a repository this process already warmed."""
-        urls = self.manifest["source_url"].tolist()
+        urls = self.source_urls()
         snapshot = self.payload["snapshot_id"]
+        access = self.access
         if arm == "noop":
             return noop_factory
         if arm == "netcdf_user_stack":
-            return lambda: backends.NetcdfUserStack(urls)
+            return lambda: backends.NetcdfUserStack(urls, backends._earthaccess_filesystem(access))
         if arm == "netcdf_tuned":
-            return lambda: backends.NetcdfTuned(urls, backends.source_store_spec(self.credentials.get()), **self.settings)
+            return lambda: backends.NetcdfTuned(urls, self.store_spec(), **self.settings)
         if arm == "virtual_icechunk":
-            return lambda: backends.VirtualIcechunk(backends.pinned_session(backends.open_mirror_repo(), snapshot).store, self.manifest)
+            return lambda: backends.VirtualIcechunk(backends.pinned_session(backends.open_mirror_repo(access), snapshot).store, self.manifest)
         if arm == "virtual_manifeststore":
 
             def manifeststore() -> Backend:
-                repo = backends.open_mirror_repo()
-                stores = backends.container_stores(repo, self.credentials.get())
+                repo = backends.open_mirror_repo(access)
+                stores = backends.container_stores(repo, self.credentials.get() if self.credentials else None, self.client_options())
                 stores[f"s3://{CONFIG.mirror_bucket}"] = backends.build_store({"kind": "s3", "bucket": CONFIG.mirror_bucket})
                 return backends.VirtualManifestStore(
                     backends.pinned_session(repo, snapshot), stores,
@@ -361,9 +381,10 @@ def cmd_probe(args: argparse.Namespace) -> int:
     from benchmarks.tempo_no2.counters import probe_network, probe_paging
 
     payload = load_manifest(args.window)
-    arms = ArmFactory(payload)
-    store = backends.build_store(backends.source_store_spec(arms.credentials.get()))
-    path = payload["granules"][0]["source_url"].split(f"{backends.SOURCE_PREFIX}/", 1)[1]
+    arms = ArmFactory(payload, access=args.access)
+    store = backends.build_store(arms.store_spec())
+    key = payload["granules"][0]["source_url"].split(f"{backends.SOURCE_PREFIX}/", 1)[1]
+    path = f"{backends.SOURCE_BUCKET}/{key}" if args.access == "https" else key
     source = probe_network(store, path)
     mirror_store = S3Store(CONFIG.mirror_bucket, region=CONFIG.region, skip_signature=True)
     mirror = probe_network(mirror_store, f"{CONFIG.mirror_prefix}/config.yaml", range_reads=0)
@@ -375,6 +396,7 @@ def cmd_probe(args: argparse.Namespace) -> int:
         "bandwidth_mb_s": source["bandwidth_mb_s"],
         "mirror_rtt_ms_median": mirror["rtt_ms_median"],
         "source_paged": paged,
+        "access": args.access,
         "host": host(),
     }
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
@@ -387,7 +409,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
     from benchmarks.tempo_no2.gate import gate_passed, run_gate
 
     payload = load_manifest(args.window)
-    arms = ArmFactory(payload)
+    arms = ArmFactory(payload, access=args.access)
     spatial = arms.spatial()
     virtual = arms.factory("virtual_icechunk")()
     baselines = [arms.factory(a)() for a in ("netcdf_user_stack", "netcdf_tuned")]
@@ -402,13 +424,14 @@ def cmd_gate(args: argparse.Namespace) -> int:
 
 def cmd_trial(args: argparse.Namespace) -> int:
     payload = load_manifest(args.case.window)
-    arms = ArmFactory(payload, json.loads(args.settings) if args.settings else None)
+    arms = ArmFactory(payload, json.loads(args.settings) if args.settings else None, access=args.access)
     spatial = arms.spatial()
     probes = json.loads(Path(args.probes).read_text()) if args.probes else None
     observations = list(range(len(payload["granules"])))
     factory = arms.factory(args.arm)
     warmed = prepare_backend(factory, args.case, observations, spatial, args.cache)
     row = run_trial(factory, args.case, observations, spatial, args.rep, args.cache, probes=probes, backend=warmed, arm=args.arm)
+    row.access = args.access
     _stamp(row, payload, args.run_id, args.session)
     print(row.to_json())
     return 0 if row.status == "ok" else 1
@@ -439,7 +462,7 @@ def cmd_catalog(args: argparse.Namespace) -> int:
 
 def cmd_smoke(args: argparse.Namespace) -> int:
     payload = load_manifest("1d")
-    arms = ArmFactory(payload)
+    arms = ArmFactory(payload, access=args.access)
     spatial = arms.spatial()
     counts: dict[tuple[str, str], int] = {}
     rows: list[TrialRow] = []
@@ -448,6 +471,7 @@ def cmd_smoke(args: argparse.Namespace) -> int:
         for arm in ARMS:
             for rep in range(2):
                 row = run_trial(arms.factory(arm), case, [0], spatial, rep, "cold", arm=arm)
+                row.access = args.access
                 _stamp(row, payload, args.run_id, "smoke")
                 rows.append(row)
                 print(row.to_json())
@@ -467,11 +491,12 @@ def cmd_smoke(args: argparse.Namespace) -> int:
     if elapsed > 120:
         print("smoke: over the 120 s budget")
         return 1
-    if not EXPECTED_PATH.exists():
-        write_expected(EXPECTED_PATH, counts)
-        print(f"recorded expected request counts in {EXPECTED_PATH}")
+    expected = EXPECTED_PATH if args.access == "s3" else EXPECTED_PATH.with_name("requests-https.json")
+    if not expected.exists():
+        write_expected(expected, counts)
+        print(f"recorded expected request counts in {expected}")
         return 0
-    diffs = check_expected(EXPECTED_PATH, counts)
+    diffs = check_expected(expected, counts)
     for arm, case, want, got in diffs:
         print(f"request count changed: {arm} {case}: expected {want}, observed {got}")
     return 1 if diffs else 0
@@ -486,9 +511,11 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("probe", help="RTT, bandwidth and HDF5 paging probes for this session (network)")
     s.add_argument("--window", choices=list(cases_mod.WINDOWS), default="1d")
     s.add_argument("--out", default="results/tempo_no2/probes.json")
+    s.add_argument("--access", choices=("s3", "https"), default="s3", help="s3: in us-west-2; https: NASA distribution endpoint, from anywhere")
     s.set_defaults(fn=cmd_probe)
     s = sub.add_parser("gate", help="exact-equality gate between file arms and the virtual arm (network)")
     s.add_argument("--window", choices=list(cases_mod.WINDOWS), default="1d")
+    s.add_argument("--access", choices=("s3", "https"), default="s3", help="s3: in us-west-2; https: NASA distribution endpoint, from anywhere")
     s.set_defaults(fn=cmd_gate)
     s = sub.add_parser("trial", help="one trial in this process; prints one JSON row (network)")
     s.add_argument("--arm", choices=ARMS, required=True)
@@ -499,6 +526,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--session", default="1")
     s.add_argument("--probes", help="probes.json from `probe`")
     s.add_argument("--settings", help='JSON of arm settings, e.g. \'{"max_workers": 1}\'')
+    s.add_argument("--access", choices=("s3", "https"), default="s3", help="s3: in us-west-2; https: NASA distribution endpoint, from anywhere")
     s.set_defaults(fn=cmd_trial)
     s = sub.add_parser("catalog", help="time the CMR search for a window (network)")
     s.add_argument("--window", choices=list(cases_mod.WINDOWS), default="1d")
@@ -509,6 +537,7 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("smoke", help="1 observation × smallest cases × all arms × n=2; request-count tripwire (network)")
     s.add_argument("--run-id", default="smoke")
     s.add_argument("--out", default="results/tempo_no2/smoke/results.jsonl")
+    s.add_argument("--access", choices=("s3", "https"), default="s3", help="s3: in us-west-2; https: NASA distribution endpoint, from anywhere")
     s.set_defaults(fn=cmd_smoke)
     args = p.parse_args(argv)
     return args.fn(args)

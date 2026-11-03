@@ -166,12 +166,12 @@ class HostSampler:
         return list(self._rows)
 
 
-def default_command(spec: TrialSpec, run_id: str = "", session: str = "", probes: str | None = None) -> list[str]:
+def default_command(spec: TrialSpec, run_id: str = "", session: str = "", probes: str | None = None, access: str = "s3") -> list[str]:
     if spec.arm == "catalog":
         return [sys.executable, "-m", "benchmarks.tempo_no2.run", "catalog", "--window", spec.case.window,
                 "--rep", "1", "--run-id", run_id, "--session", session]
     cmd = [sys.executable, "-m", "benchmarks.tempo_no2.run", "trial", "--arm", spec.arm, "--case", str(spec.case),
-           "--rep", str(spec.rep), "--cache", spec.cache_state, "--run-id", run_id, "--session", session]
+           "--rep", str(spec.rep), "--cache", spec.cache_state, "--run-id", run_id, "--session", session, "--access", access]
     if spec.settings:
         cmd += ["--settings", json.dumps(spec.settings)]
     if probes:
@@ -252,6 +252,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--probes", default="results/tempo_no2/probes.json", help="probes.json from `run.py probe`; without it floor_seconds is null")
     p.add_argument("--out-root", default="results/tempo_no2")
     p.add_argument("--timeout-s", type=float, default=1800)
+    p.add_argument("--access", choices=("s3", "https"), default="s3", help="s3: in us-west-2; https: from anywhere via the distribution endpoint")
     args = p.parse_args(argv)
 
     specs = plan(args.headline_only)
@@ -278,7 +279,7 @@ def main(argv: list[str] | None = None) -> int:
     if probes is None:
         print(f"warning: no probes file at {args.probes}; floor_seconds will be null (run `run.py probe` first)", file=sys.stderr)
     failed = run_matrix(specs, args.run_id, args.session, out_dir,
-                        trial_command=lambda s: default_command(s, args.run_id, args.session, probes),
+                        trial_command=lambda s: default_command(s, args.run_id, args.session, probes, args.access),
                         timeout_s=args.timeout_s)
     (Path(args.out_root) / "latest.json").write_text(json.dumps({"run_id": args.run_id}) + "\n")
     print(f"done: {len(specs)} trials, {failed} failed, rows in {out_dir / 'results.jsonl'}")

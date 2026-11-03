@@ -144,6 +144,19 @@ n = 10 in three sessions; the session-to-session spread of the per-session
 medians is reported and a delta inside that spread is "no detectable
 difference".
 
+## Transports
+
+`--access s3` (default) reads the granules from ASDC's bucket and needs
+us-west-2. `--access https` reads the same objects from NASA's
+distribution endpoint with an Earthdata bearer token: the Icechunk arm
+swaps the store's `asdc` container for an HTTPS one (the TEMPO HTTPS
+quickstart's method), the tuned arm uses an HTTP object store with the
+same token, and the user stack uses earthaccess's HTTPS filesystem. Every
+row carries `access`, and cells and speedups are keyed by it, so HTTPS
+numbers never mix with in-region ones. Over HTTPS the user-stack arm is
+not instrumented for request counts; the smoke tripwire keeps a separate
+`expected/requests-https.json`.
+
 ## Hosts
 
 | Step | Host | Why |

@@ -46,6 +46,7 @@ class TrialRow:
     repetition: int | None = None
     cache_state: str | None = None
     cache_drop: str | None = None
+    access: str | None = None  # s3 (in-region) or https (distribution endpoint, from anywhere)
     # provenance
     git_sha: str | None = None
     uv_lock_sha256: str | None = None

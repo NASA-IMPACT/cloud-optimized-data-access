@@ -78,3 +78,11 @@ def test_main_refuses_without_yes(tmp_path, capsys, monkeypatch):
     rc = main(["--run-id", "r", "--session", "1", "--headline-only", "--smoke-results", str(SMOKE)])
     assert rc == 2
     assert "re-run with --yes" in capsys.readouterr().out
+
+
+def test_default_command_threads_access_through():
+    from benchmarks.tempo_no2.cases import Case
+    from benchmarks.tempo_no2.orchestrate import TrialSpec, default_command
+
+    cmd = default_command(TrialSpec("netcdf_tuned", Case("point", 1, "1d"), 0, "cold"), "r", "1", access="https")
+    assert cmd[cmd.index("--access") + 1] == "https"

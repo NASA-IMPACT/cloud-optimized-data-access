@@ -36,6 +36,16 @@ TEMPO_EPOCH = np.datetime64("1980-01-06T00:00:00", "ns")
 SOURCE_BUCKET = "asdc-prod-protected"
 SOURCE_PREFIX = f"s3://{SOURCE_BUCKET}"
 PROVIDER = "LARC_CLOUD"
+# NASA's distribution endpoint serves the same objects over HTTPS from anywhere,
+# with an Earthdata bearer token. Used by --access https (laptop runs).
+HTTPS_ENDPOINT = "https://data.asdc.earthdata.nasa.gov"
+ASDC_CONTAINER = "asdc"
+
+
+def https_url(s3_url: str) -> str:
+    """s3://bucket/key → the distribution endpoint's URL for the same object."""
+    u = urlparse(s3_url)
+    return f"{HTTPS_ENDPOINT}/{u.netloc}{u.path}"
 
 
 @dataclass
@@ -92,12 +102,17 @@ def _fetch_asdc_credentials() -> dict[str, Any]:
 
 
 def build_store(spec: dict[str, Any]) -> Any:
-    """An obstore store from a picklable spec: {"kind": "local"} or
+    """An obstore store from a picklable spec: {"kind": "local"},
+    {"kind": "http", "base_url", "client_options"} or
     {"kind": "s3", "bucket", "prefix", "region", "credentials"}."""
     if spec["kind"] == "local":
         from obstore.store import LocalStore
 
         return LocalStore(prefix=spec["prefix"]) if spec.get("prefix") else LocalStore()
+    if spec["kind"] == "http":
+        from obstore.store import HTTPStore
+
+        return HTTPStore(spec["base_url"], client_options=spec.get("client_options") or None)
     from obstore.store import S3Store
 
     c = spec.get("credentials")
@@ -109,19 +124,31 @@ def build_store(spec: dict[str, Any]) -> Any:
     return S3Store(spec["bucket"], prefix=spec.get("prefix") or None, region=spec.get("region", CONFIG.region), skip_signature=True)
 
 
-def source_store_spec(credentials: dict[str, Any]) -> dict[str, Any]:
+def source_store_spec(credentials: dict[str, Any] | None, access: str = "s3", client_options: dict[str, Any] | None = None) -> dict[str, Any]:
+    if access == "https":
+        return {"kind": "http", "base_url": HTTPS_ENDPOINT, "client_options": client_options or _https_client_options()}
     return {"kind": "s3", "bucket": SOURCE_BUCKET, "prefix": "", "region": CONFIG.region, "credentials": credentials}
 
 
-def container_stores(repo: Any, credentials: dict[str, Any] | None) -> dict[str, Any]:
+def _https_client_options() -> dict[str, Any]:
+    import earthaccess_auth
+    from earthaccess_auth.adapters.obstore import http_client_options
+
+    return http_client_options(earthaccess_auth.login())
+
+
+def container_stores(repo: Any, credentials: dict[str, Any] | None, client_options: dict[str, Any] | None = None) -> dict[str, Any]:
     """Registry entries for every virtual chunk container, under both the
     container's URL prefix and its ``vcc://<name>`` form, so references in
-    either form resolve. S3 containers get ``credentials``."""
+    either form resolve. S3 containers get ``credentials``; HTTPS containers
+    get ``client_options`` (the bearer token headers)."""
     stores: dict[str, Any] = {}
     for container in (repo.config.virtual_chunk_containers or {}).values():
         url = urlparse(container.url_prefix)
         if url.scheme == "file":
             store = build_store({"kind": "local", "prefix": url.path})
+        elif url.scheme in ("http", "https"):
+            store = build_store({"kind": "http", "base_url": container.url_prefix.rstrip("/"), "client_options": client_options})
         else:
             store = build_store({"kind": "s3", "bucket": url.netloc, "prefix": url.path.strip("/"), "credentials": credentials})
         stores[container.url_prefix.rstrip("/")] = store
@@ -199,10 +226,12 @@ class NetcdfUserStack:
         return self._counter.counts() if self._counter else None
 
 
-def _earthaccess_filesystem() -> Any:
+def _earthaccess_filesystem(access: str = "s3") -> Any:
     import earthaccess
 
     earthaccess.login(strategy="all", persist=True)
+    if access == "https":
+        return earthaccess.get_fsspec_https_session()
     return earthaccess.get_s3_filesystem(provider=PROVIDER)
 
 
@@ -280,6 +309,12 @@ class NetcdfTuned:
     def _path(self, url: str) -> str:
         if self.store_spec["kind"] == "local":
             return urlparse(url).path
+        if self.store_spec["kind"] == "http":
+            base = self.store_spec["base_url"].rstrip("/") + "/"
+            if url.startswith(base):
+                return url[len(base):]
+            u = urlparse(url)  # an s3:// manifest URL: bucket/key under the endpoint
+            return f"{u.netloc}{u.path}"
         path = urlparse(url).path.lstrip("/")
         prefix = self.store_spec.get("prefix") or ""
         return path[len(prefix):].lstrip("/") if prefix and path.startswith(prefix) else path
@@ -437,15 +472,34 @@ class VirtualManifestStore(_VirtualSelection):
 # --- the store ------------------------------------------------------------------
 
 
-def open_mirror_repo() -> Any:
-    """The public Source Cooperative mirror, with Earthdata credentials for virtual chunks."""
+def open_mirror_repo(access: str = "s3") -> Any:
+    """The public Source Cooperative mirror, with Earthdata credentials for virtual chunks.
+
+    ``access="https"`` swaps the ``asdc`` container for NASA's distribution
+    endpoint with a bearer token, as the TEMPO HTTPS quickstart does, so the
+    store reads from anywhere; the mirror itself is anonymous either way.
+    """
     import icechunk
-    from earthaccess_auth.adapters.icechunk import earthdata_containers_credentials
 
     storage = icechunk.s3_storage(
         bucket=CONFIG.mirror_bucket, prefix=CONFIG.mirror_prefix, region=CONFIG.region, anonymous=True
     )
     repo = icechunk.Repository.open(storage)
+    if access == "https":
+        import earthaccess_auth
+
+        token = earthaccess_auth.login().token["access_token"]
+        prefix = f"{HTTPS_ENDPOINT}/{SOURCE_BUCKET}/"
+        config = repo.config
+        config.set_virtual_chunk_container(
+            icechunk.VirtualChunkContainer(prefix, icechunk.http_store(headers={"Authorization": f"Bearer {token}"}), name=ASDC_CONTAINER)
+        )
+        return repo.reopen(
+            config=config,
+            authorize_virtual_chunk_access=icechunk.containers_credentials({prefix: icechunk.credentials.HttpAccess}),
+        )
+    from earthaccess_auth.adapters.icechunk import earthdata_containers_credentials
+
     return repo.reopen(authorize_virtual_chunk_access=earthdata_containers_credentials(repo))
 
 

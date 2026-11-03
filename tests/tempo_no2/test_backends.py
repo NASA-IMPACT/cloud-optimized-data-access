@@ -137,3 +137,40 @@ def test_static_minimum_from_store_metadata_matches_traced_chunk_reads(virtual_r
     # The ManifestStore path reads coordinates through the parsed session, not the
     # traced registry, so the cross-check covers data chunk reads only.
     assert m.counts()["request_count"] == static["data_chunks"]
+
+
+@pytest.fixture(scope="module")
+def http_granules(granules):
+    from tests.tempo_no2.http_server import serve
+
+    server, base_url = serve(str(granules[0].parent))
+    yield base_url, [f"{base_url}/{p.name}" for p in granules]
+    server.shutdown()
+
+
+def test_tuned_arm_reads_over_http(granules, http_granules, cases):
+    base_url, urls = http_granules
+    # plain http only for the local test server; the real endpoint is https
+    t = NetcdfTuned(urls, {"kind": "http", "base_url": base_url, "client_options": {"allow_http": True}}, max_workers=2)
+    u = local_user_stack(granules)
+    np.testing.assert_array_equal(t.aoi([0, 1], cases.windows[1]).no2, u.aoi([0, 1], cases.windows[1]).no2)
+    assert t.counts()["request_count"] > 0
+
+
+def test_https_url_maps_s3_keys_to_the_distribution_endpoint():
+    from benchmarks.tempo_no2.backends import https_url
+
+    assert https_url("s3://asdc-prod-protected/TEMPO/a.nc") == "https://data.asdc.earthdata.nasa.gov/asdc-prod-protected/TEMPO/a.nc"
+
+
+def test_container_stores_builds_http_stores_for_https_containers():
+    import types
+
+    from benchmarks.tempo_no2.backends import container_stores
+    from obstore.store import HTTPStore
+
+    container = types.SimpleNamespace(name="asdc", url_prefix="https://data.asdc.earthdata.nasa.gov/asdc-prod-protected/", store=None)
+    repo = types.SimpleNamespace(config=types.SimpleNamespace(virtual_chunk_containers={"asdc": container}))
+    stores = container_stores(repo, credentials=None, client_options={"default_headers": {"Authorization": "Bearer x"}})
+    assert isinstance(stores["vcc://asdc"], HTTPStore)
+    assert stores["https://data.asdc.earthdata.nasa.gov/asdc-prod-protected"] is stores["vcc://asdc"]

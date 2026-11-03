@@ -70,6 +70,7 @@ def _limiter(cpu_fraction: float, nproc: float, max_core: float | None, bandwidt
 def summarize(df: pd.DataFrame) -> dict[str, Any]:
     df = df.copy()
     df["settings_key"] = df["arm_settings"].apply(_settings_key)
+    df["access"] = df["access"].astype(object).where(df["access"].notna(), "s3") if "access" in df else "s3"
     ok = df[(df["status"] == "ok") & (df["repetition"].fillna(0) >= 0)]
     noop = ok[ok["arm"] == "noop"]
     noop_rx = noop.groupby("session_id")["net_rx_bytes"].median().to_dict() if not noop.empty else {}
@@ -77,7 +78,7 @@ def summarize(df: pd.DataFrame) -> dict[str, Any]:
     # arms' first phase. The virtual arm's coordinate lookup is inside its open.
     catalog = ok[ok["arm"] == "catalog"].groupby("window")["catalog_seconds"].median().to_dict()
     trials = ok[(~ok["arm"].isin(SPECIAL_ARMS)) & (ok["cache_state"] == "cold")]
-    keys = ["arm", "settings_key", "workload", "case_size", "window"]
+    keys = ["arm", "settings_key", "workload", "case_size", "window", "access"]
 
     # Review focus 5: a headline arm with no ok rows in a cell where others have some.
     attempted = df[(df["arm"].isin(HEADLINE_ARMS)) & (df["cache_state"] == "cold") & (df["repetition"].fillna(0) >= 0)]
@@ -89,7 +90,7 @@ def summarize(df: pd.DataFrame) -> dict[str, Any]:
 
     cells: list[dict[str, Any]] = []
     for key, g in trials.groupby(keys, dropna=False):
-        arm, settings_key, workload, size, window = key
+        arm, settings_key, workload, size, window, access = key
         e2e = g["end_to_end_seconds"].astype(float)
         cpu = (g["cpu_user_s"].fillna(0) + g["cpu_sys_s"].fillna(0)) / e2e
         bw_probe = g["bandwidth_mb_s"].astype(float).median()
@@ -102,7 +103,7 @@ def summarize(df: pd.DataFrame) -> dict[str, Any]:
         cells.append({
             "arm": arm,
             "arm_settings": json.loads(settings_key) if settings_key else {},
-            "workload": workload, "case_size": int(size), "window": window, "cache_state": "cold",
+            "workload": workload, "case_size": int(size), "window": window, "cache_state": "cold", "access": access,
             "n": int(len(g)),
             "median_s": float(e2e.median()), "p90_s": float(e2e.quantile(0.9)),
             "min_s": float(e2e.min()), "max_s": float(e2e.max()),
@@ -127,13 +128,15 @@ def summarize(df: pd.DataFrame) -> dict[str, Any]:
 
     speedups: list[dict[str, Any]] = []
     plain = trials[trials["settings_key"] == ""]
-    pair_keys = ["workload", "case_size", "window", "session_id", "repetition"]
+    pair_keys = ["workload", "case_size", "window", "access", "session_id", "repetition"]
     for baseline in BASELINES:
-        for (workload, size, window), g in plain.groupby(["workload", "case_size", "window"]):
+        for (workload, size, window, access), g in plain.groupby(["workload", "case_size", "window", "access"]):
             merged = _paired(g, baseline, VIRTUAL, pair_keys)
             if merged.empty:
                 continue
-            speedups.append(_speedup_row(merged, workload, int(size), window, baseline, "headline" if baseline == "netcdf_user_stack" else "tuned"))
+            row = _speedup_row(merged, workload, int(size), window, baseline, "headline" if baseline == "netcdf_user_stack" else "tuned")
+            row["access"] = access
+            speedups.append(row)
     one = trials[trials["settings_key"] == _settings_key({"max_workers": 1})]
     for (workload, size, window), g in one.groupby(["workload", "case_size", "window"]):
         eight = plain[(plain.arm == "netcdf_tuned") & (plain.workload == workload) & (plain.case_size == size) & (plain.window == window)]

@@ -89,3 +89,8 @@ def test_cells_carry_request_count_kind(results_small):
     s = summarize(results_small)
     assert cell(s, "virtual_icechunk", 10)["request_count_kind"] == "static-minimum"
     assert cell(s, "netcdf_tuned", 10)["request_count_kind"] == "measured"
+
+
+def test_cells_record_access_transport(results_small):
+    s = summarize(results_small)
+    assert all(c["access"] == "s3" for c in s["cells"])  # fixture rows predate the field; s3 is the default

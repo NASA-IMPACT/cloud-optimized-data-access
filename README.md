@@ -31,6 +31,16 @@ uv run python -m benchmarks.tempo_no2.analyze results/tempo_no2/<id>
 cd decks/coda-presentation && npm install && npm run build
 ```
 
+**From a laptop.** Add `--access https` to `probe`, `gate`, `smoke`, `trial`
+and `orchestrate`. The mirror is anonymous and the virtual chunks are then
+read from NASA's distribution endpoint with your Earthdata bearer token,
+exactly as the TEMPO HTTPS quickstart does, so everything runs from
+anywhere. Rows record `access=https` and the summary keeps the two
+transports apart: a laptop run adds cross-region latency and the
+endpoint's own limits, so it is a different row, not a cheaper version of
+the in-region one. The user-stack arm's request count is null over HTTPS
+(no botocore hook on the HTTPS filesystem); the tuned arm still counts.
+
 Headline timing runs on one dedicated EC2 instance, the same type for all
 three sessions; `probe`, `gate`, `smoke` and the estimate can run on
 CodeBuild or the Hub. The orchestrator never starts a matrix without
