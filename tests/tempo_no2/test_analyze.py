@@ -116,3 +116,10 @@ def test_figures_leave_out_the_checker_arm(results_small, tmp_path):
     figures(s, tmp_path)
     assert "virtual_manifeststore" not in (tmp_path / "phases.svg").read_text()
     assert "virtual_manifeststore" not in (tmp_path / "requests.svg").read_text()
+
+
+def test_limiter_names_decode_when_a_core_is_busy_and_the_network_is_not():
+    from benchmarks.tempo_no2.analyze import _limiter
+
+    assert _limiter(cpu_fraction=1.1, nproc=4, max_core=None, bandwidth_fraction=0.45, floor_ratio=3.4) == "cpu-decode"
+    assert _limiter(cpu_fraction=0.3, nproc=4, max_core=None, bandwidth_fraction=0.45, floor_ratio=1.5) == "latency"

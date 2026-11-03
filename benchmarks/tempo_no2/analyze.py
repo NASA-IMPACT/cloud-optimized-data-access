@@ -63,6 +63,8 @@ def _limiter(cpu_fraction: float, nproc: float, max_core: float | None, bandwidt
         return "cpu-all-cores"
     if bandwidth_fraction >= 0.7:
         return "network-bandwidth"
+    if cpu_fraction >= 0.9 and bandwidth_fraction < 0.5:
+        return "cpu-decode"  # one core busy throughout while the network idles: decompression
     if floor_ratio is not None and not math.isnan(floor_ratio) and floor_ratio <= 2:
         return "latency"
     return "unexplained"

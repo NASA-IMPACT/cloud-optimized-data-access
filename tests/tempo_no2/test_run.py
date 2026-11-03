@@ -180,3 +180,15 @@ def test_arm_factory_passes_settings_to_the_virtual_arm(monkeypatch):
     ArmFactory({"granules": [{"source_url": "s3://b/k.nc"}], "snapshot_id": "x"}, {"zarr_concurrency": 64, "icechunk_concurrency": 32}).factory("virtual_icechunk")()
     assert captured["settings"] == {"icechunk_concurrency": 32}  # only the Icechunk keys reach the repository open
     assert captured["kw"] == {"zarr_concurrency": 64}
+
+
+def test_floor_uses_wire_bytes_when_the_count_is_a_static_bound(cases, monkeypatch):
+    from benchmarks.tempo_no2 import run as run_mod
+
+    monkeypatch.setattr(run_mod, "_HOST", {**run_mod._HOST, "host_kind": "ec2"})
+    calls = iter([0, 127_000_000])
+    monkeypatch.setattr(run_mod, "_net_rx", lambda: next(calls))
+    probes = {"rtt_ms_median": 15.0, "bandwidth_mb_s": 86.0}
+    row = run_trial(fake_backend_factory, Case("point", 10, "1d"), [0], cases, 0, "cold", probes=probes, arm="virtual_icechunk")
+    assert row.request_count_reason.startswith("static") and row.net_rx_bytes == 127_000_000
+    assert row.floor_seconds == pytest.approx(5 * 0.015 + 127_000_000 / 86e6, rel=1e-3)

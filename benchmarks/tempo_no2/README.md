@@ -145,7 +145,9 @@ each trial runs (per-core CPU, network bytes, steal) and stores the
 timeline next to the row. The summary derives `cpu_fraction`,
 `bandwidth_fraction`, the coefficient of variation, and a `likely_limiter`
 label per cell (`cpu-one-core`, `cpu-all-cores`, `network-bandwidth`,
-`latency`, `unexplained`).
+`cpu-decode` for one busy core with an idle network, `latency`,
+`unexplained`). For the Icechunk arm the floor uses wire bytes, since its
+request count is a static bound over uncompressed chunk sizes.
 
 ## Pinning
 

@@ -261,6 +261,15 @@ def run_trial(
         row.net_rx_bytes = _net_rx() - net_before
     else:
         row.net_rx_bytes_reason = "shared host"
+    if (
+        row.status == "ok" and probes and probes.get("rtt_ms_median") and probes.get("bandwidth_mb_s")
+        and (row.request_count_reason or "").startswith("static") and row.net_rx_bytes
+    ):
+        # a static bound counts uncompressed chunk bytes; the floor wants bytes on the wire
+        row.floor_seconds = floor_seconds(
+            serial_phases(row.arm or "virtual", row.request_count or 0, len(observations)),
+            probes["rtt_ms_median"] / 1000, row.net_rx_bytes, probes["bandwidth_mb_s"] * 1e6,
+        )
     return row
 
 
