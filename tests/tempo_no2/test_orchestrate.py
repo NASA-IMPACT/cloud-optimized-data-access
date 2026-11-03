@@ -127,3 +127,9 @@ def test_main_limit_runs_only_the_first_trials(tmp_path, capsys, monkeypatch):
     rc = main(["--run-id", "r", "--headline-only", "--smoke-results", str(SMOKE), "--yes", "--limit", "10", "--out-root", str(tmp_path)])
     assert rc == 0 and len(seen) == 10 and seen[0].arm == "noop"
     assert "limit: running 10 of" in capsys.readouterr().out
+
+
+def test_estimate_respects_limit(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    rc = main(["--run-id", "r", "--headline-only", "--smoke-results", str(SMOKE), "--estimate", "--limit", "10"])
+    assert rc == 0 and "trials: 10" in capsys.readouterr().out

@@ -287,6 +287,9 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     specs = plan(args.headline_only, arms=args.arms)
+    if args.limit:
+        print(f"limit: running {min(args.limit, len(specs))} of {len(specs)} planned trials")
+        specs = specs[: args.limit]
     smoke_path = Path(args.smoke_results)
     if not smoke_path.exists():
         print(f"no smoke results at {smoke_path}: run `run.py smoke` first", file=sys.stderr)
@@ -313,9 +316,6 @@ def main(argv: list[str] | None = None) -> int:
         if not args.estimate:
             print("re-run with --yes to start")
         return 0 if args.estimate else 2
-    if args.limit:
-        print(f"limit: running {min(args.limit, len(specs))} of {len(specs)} planned trials")
-        specs = specs[: args.limit]
     out_dir = Path(args.out_root) / args.run_id
     probes = args.probes if args.probes and Path(args.probes).exists() else None
     if probes is None:
