@@ -138,18 +138,14 @@ def _one_granule_cells():
     ]
 
 
-def test_floor_is_decode_plus_the_smallest_fetch_at_the_download_rate(tmp_path):
-    from benchmarks.tempo_no2.analyze import (
-        FLOOR_BARS,
-        floor_figure,
-        floor_seconds_for_one_granule,
-    )
+def test_scan_figures_skip_missing_bars(tmp_path):
+    from benchmarks.tempo_no2.analyze import SCAN_FIGURES, scan_figure
 
+    name, size, bars = SCAN_FIGURES[0]
     cells = _one_granule_cells()
-    by_label = {label: next(c for c in cells if c["arm"] == arm) for label, arm, _ in FLOOR_BARS}
-    assert floor_seconds_for_one_granule(by_label) == pytest.approx(1.52 + 32e6 / (515e6 / 1.15))
-    assert floor_figure({"cells": cells}, tmp_path).name == "floor.svg"
-    assert floor_figure({"cells": cells[:3]}, tmp_path) is None  # no download arm: no figure, no crash
+    assert scan_figure({"cells": cells}, tmp_path, name, size, bars).name == "scan_1.svg"
+    assert "Default stack" in (tmp_path / "scan_1.svg").read_text()
+    assert scan_figure({"cells": cells[:1]}, tmp_path, name, size, bars) is None  # one bar is not a comparison
 
 
 def test_cells_carry_the_retrieval_split_median():

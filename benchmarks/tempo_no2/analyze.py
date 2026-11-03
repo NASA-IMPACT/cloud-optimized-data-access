@@ -272,79 +272,78 @@ def figures(summary: dict[str, Any], out_dir: Path) -> list[Path]:
     ax.tick_params(axis="x", labelsize=7)
     fig.tight_layout()
     paths.append(_save(fig, out_dir / "speedup.svg"))
-    floor = floor_figure(summary, out_dir)
-    return paths + ([floor] if floor else [])
+    for name, size, bars in SCAN_FIGURES:
+        path = scan_figure(summary, out_dir, name, size, bars)
+        if path:
+            paths.append(path)
+    return paths
 
 
-# The one-granule figure for the deck: (label, arm, arm_variant) top to bottom.
-FLOOR_BARS = (
-    ("Default stack", "netcdf_user_stack", {}),
-    ("Tuned h5py", "netcdf_tuned", {"max_workers": 1}),
-    ("Virtual Zarr", "virtual_icechunk", {}),
-    ("Download + h5py", "netcdf_download", {}),
+# Whole-scan figures for the deck: (file name, granules, bars as (label, arm, arm_variant) top to bottom).
+SCAN_FIGURES = (
+    ("scan_1.svg", 1, (
+        ("Default stack", "netcdf_user_stack", {}),
+        ("Tuned h5py", "netcdf_tuned", {"max_workers": 1}),
+        ("Virtual Zarr", "virtual_icechunk", {}),
+        ("Download + h5py", "netcdf_download", {}),
+    )),
+    ("scan_15.svg", 15, (
+        ("Tuned h5py, 1 process", "netcdf_tuned", {"max_workers": 1}),
+        ("Tuned h5py, 8 processes", "netcdf_tuned", {}),
+        ("Virtual Zarr", "virtual_icechunk", {}),
+        ("Download + h5py", "netcdf_download", {}),
+    )),
 )
 
 
-def floor_seconds_for_one_granule(cells: dict[str, dict[str, Any]]) -> float:
-    """Decoding the answer with the file in memory, plus the smallest fetch any arm made at the
-    download arm's measured rate: the floor every library shares."""
-    download = cells["Download + h5py"]
-    split = download["retrieval_split"]
-    rate = (download["bytes_requested"] or 0) / split["download_seconds"]
-    fewest = min(c["net_rx_bytes"] for c in cells.values() if c["net_rx_bytes"])
-    return split["decode_seconds"] + fewest / rate
-
-
-def floor_figure(summary: dict[str, Any], out_dir: Path) -> Path | None:
-    """End to end for one granule's whole scan, split into setup + open and read + decode, against the shared floor.
-    None when the run lacks any of the four cells or the download arm's split timers."""
+def scan_figure(summary: dict[str, Any], out_dir: Path, name: str, size: int, bars: tuple) -> Path | None:
+    """End to end for a whole scan of `size` granules, one bar per library, split into setup + open
+    and read + decode. Bars the run lacks are left out; None when fewer than two remain."""
     import matplotlib.pyplot as plt
 
     cells = {}
-    for label, arm, variant in FLOOR_BARS:
+    for label, arm, variant in bars:
         match = [c for c in summary["cells"] if c["arm"] == arm and c["arm_variant"] == variant
-                 and (c["workload"], c["case_size"], c["window"]) == ("scan", 1, "1d")]
-        if not match:
-            return None
-        cells[label] = match[0]
-    if not cells["Download + h5py"].get("retrieval_split"):
+                 and (c["workload"], c["case_size"], c["window"]) == ("scan", size, "1d")]
+        if match:
+            cells[label] = match[0]
+    if len(cells) < 2:
         return None
-    floor = floor_seconds_for_one_granule(cells)
 
     logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)  # Inter is the deck's font, often not installed where this runs
     out_dir.mkdir(parents=True, exist_ok=True)
     # svg.fonttype none: text stays text, so the deck renders it in Inter
     style = {"font.family": ["Inter", "DejaVu Sans", "sans-serif"], "font.size": 13, "svg.fonttype": "none"}
     with plt.rc_context(style):
-        return _draw_floor(cells, floor, out_dir)
+        return _draw_scan(cells, size, out_dir / name)
 
 
-def _draw_floor(cells: dict[str, dict[str, Any]], floor: float, out_dir: Path) -> Path:
+def _draw_scan(cells: dict[str, dict[str, Any]], size: int, path: Path) -> Path:
     import matplotlib.pyplot as plt
 
     setup_c, read_c, ink, muted = "#d97e6a", "#952f7c", "#3f3f48", "#6b6b76"  # deck palette; validated as a pair
-    fig, ax = plt.subplots(figsize=(11, 3.6))
-    labels = [label for label, _, _ in FLOOR_BARS][::-1]
+    fig, ax = plt.subplots(figsize=(11, 0.75 * len(cells) + 1.2))
+    labels = list(cells)[::-1]
     opens = np.array([cells[label]["phases"]["open"] or 0.0 for label in labels])
     reads = np.array([(cells[label]["phases"]["retrieval"] or 0.0) + (cells[label]["phases"]["processing"] or 0.0) for label in labels])
-    gap = 0.04  # a thin surface gap between the two segments
+    gap = 0.04 * max(opens + reads) / 30  # a thin surface gap between the two segments
     ax.barh(labels, opens - gap, color=setup_c, height=0.62, label="Setup + open")
     ax.barh(labels, reads, left=opens, color=read_c, height=0.62, label="Read + decode")
+    top = max(c["median_s"] for c in cells.values())
     for y, label in enumerate(labels):
-        ax.text(cells[label]["median_s"] + 0.3, y, f"{cells[label]['median_s']:.1f} s", va="center", color=ink)
-    ax.axvline(floor, color=ink, linewidth=1.2, linestyle=(0, (4, 3)))
-    ax.text(floor + 0.25, len(labels) - 0.45, f"floor {floor:.1f} s: decompression", color=ink, va="bottom")
-    ax.set_xlabel("seconds, one granule, whole scan (median of cold runs)", color=muted)
-    ax.set_xlim(0, max(c["median_s"] for c in cells.values()) * 1.12)
-    ax.set_ylim(-0.6, len(labels) - 0.1)
+        ax.text(cells[label]["median_s"] + top * 0.012, y, f"{cells[label]['median_s']:.1f} s", va="center", color=ink)
+    granules = "one granule" if size == 1 else f"{size} granules"
+    ax.set_xlabel(f"seconds, whole scan of {granules} (median of cold runs)", color=muted)
+    ax.set_xlim(0, top * 1.12)
     for side in ("top", "right", "left"):
         ax.spines[side].set_visible(False)
     ax.spines["bottom"].set_color(muted)
     ax.tick_params(axis="y", length=0, colors=ink)
     ax.tick_params(axis="x", colors=muted)
-    ax.legend(loc="lower right", frameon=False, labelcolor=ink)
+    # above the plot: the longest bar runs into any corner inside it
+    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.0), ncol=2, frameon=False, labelcolor=ink)
     fig.tight_layout()
-    return _save(fig, out_dir / "floor.svg")
+    return _save(fig, path)
 
 
 def _save(fig: Any, path: Path) -> Path:
