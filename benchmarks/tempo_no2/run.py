@@ -204,9 +204,13 @@ def run_trial(
             processing_start = time.perf_counter()
             _ = backends.quality_mask(selection)
             row.processing_seconds = time.perf_counter() - processing_start
+            row.end_to_end_seconds = time.perf_counter() - total_start
             if backend is None and hasattr(b, "close"):
-                b.close()  # cold trial: wait for worker processes so their CPU time is counted
-        row.end_to_end_seconds = time.perf_counter() - total_start
+                # cold trial: wait for worker processes so their CPU time is counted,
+                # but shutting them down is not part of answering the question
+                teardown_start = time.perf_counter()
+                b.close()
+                row.teardown_seconds = time.perf_counter() - teardown_start
         row.discovery_plus_open_seconds = row.open_seconds
         row.rendering_seconds = 0.0
         row.cpu_user_s, row.cpu_sys_s, row.peak_rss_bytes = usage.cpu_user_s, usage.cpu_sys_s, usage.peak_rss_bytes

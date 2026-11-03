@@ -213,7 +213,8 @@ def figures(summary: dict[str, Any], out_dir: Path) -> list[Path]:
     import matplotlib.pyplot as plt
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    cells = [c for c in summary["cells"] if not c["arm_variant"]]
+    # headline arms only: no orchestrator override, and not the once-per-session checker
+    cells = [c for c in summary["cells"] if not c["arm_variant"] and c["arm"] != "virtual_manifeststore"]
     one_day = [c for c in cells if c["window"] == "1d"]
     labels = [f"{c['workload']}/{c['case_size']} {c['arm']}" for c in one_day]
     paths = []

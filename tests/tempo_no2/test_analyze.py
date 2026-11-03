@@ -106,3 +106,13 @@ def test_cells_carry_request_count_kind(results_small):
 def test_cells_record_access_transport(results_small):
     s = summarize(results_small)
     assert all(c["access"] == "s3" for c in s["cells"])  # fixture rows predate the field; s3 is the default
+
+
+def test_figures_leave_out_the_checker_arm(results_small, tmp_path):
+    from benchmarks.tempo_no2.analyze import figures
+
+    s = summarize(results_small)
+    s["cells"].append({**cell(s, "virtual_icechunk", 10), "arm": "virtual_manifeststore", "request_count_kind": "client-ranges"})
+    figures(s, tmp_path)
+    assert "virtual_manifeststore" not in (tmp_path / "phases.svg").read_text()
+    assert "virtual_manifeststore" not in (tmp_path / "requests.svg").read_text()

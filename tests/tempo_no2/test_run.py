@@ -154,3 +154,16 @@ def test_scan_case_reads_the_whole_grid_for_its_first_observations_only(cases):
     assert row.status == "ok" and row.observation_count == 1
     assert seen["observations"] == [0] and seen["window"] == cases.full_window
     assert parse_case("scan:1:1d") == Case("scan", 1, "1d")
+
+
+def test_end_to_end_excludes_backend_teardown(cases):
+    import time
+
+    class SlowClose(FakeBackend):
+        name = "netcdf_tuned"
+
+        def close(self):
+            time.sleep(0.3)
+
+    row = run_trial(lambda: SlowClose(), Case("point", 10, "1d"), [0], cases, 0, "cold", arm="netcdf_tuned")
+    assert row.end_to_end_seconds < 0.25 and row.teardown_seconds >= 0.3

@@ -71,6 +71,7 @@ class TrialRow:
     processing_seconds: float | None = None
     rendering_seconds: float | None = None
     end_to_end_seconds: float | None = None
+    teardown_seconds: float | None = None  # backend shutdown (worker pools); outside end_to_end
     # resources
     cpu_user_s: float | None = None
     cpu_sys_s: float | None = None
