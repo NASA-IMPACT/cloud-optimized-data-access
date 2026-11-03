@@ -1,0 +1,34 @@
+[project]
+name = "cloud-optimized-data-access"
+version = "0.1.0"
+description = "ODSI team contributions to the Cloud-Optimized Data Access trade study: benchmarks and decks"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = [
+    "earthaccess",
+    "earthaccess-auth[icechunk]>=0.4.0",
+    "icechunk>=2.2.2",
+    "xarray",
+    "zarr",
+    "h5py",
+    "h5netcdf",
+    "s3fs",
+    "obstore",
+    "obspec-utils>=0.9.0",
+    "virtualizarr>=2.7.1",
+    "psutil",
+    "numpy",
+    "pandas",
+    "scipy",
+    "matplotlib",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.uv]
+package = false

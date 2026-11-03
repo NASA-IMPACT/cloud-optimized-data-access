@@ -218,3 +218,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# cloud-optimized-data-access
+node_modules/
+decks/*/dist/
+.env*
+!.env*.sample
+out/
+benchmark-scratch/
+.superpowers/
