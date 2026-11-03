@@ -22,6 +22,7 @@ dependencies = [
     "pandas",
     "scipy",
     "matplotlib",
+    "dask",
 ]
 
 [dependency-groups]
