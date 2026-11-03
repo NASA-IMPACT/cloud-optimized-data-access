@@ -4,6 +4,7 @@ import pytest
 from obstore.store import LocalStore
 
 from benchmarks.tempo_no2.backends import (
+    NetcdfDownload,
     NetcdfTuned,
     NetcdfUserStack,
     VirtualIcechunk,
@@ -66,6 +67,20 @@ def test_tuned_matches_user_stack_and_counts_requests(granules, cases):
     assert t.counts()["request_count"] > 0
     assert t.settings["block_size"] == 8 * 2**20 and t.settings["paged"] is False
     assert t.settings["max_workers"] == 2 and t.settings["workers"] == "processes"
+
+
+def test_download_matches_user_stack_and_counts_every_part(granules, cases):
+    part = 4096
+    d = NetcdfDownload([f"file://{p}" for p in granules], {"kind": "local"}, part_bytes=part, concurrency=3)
+    u = local_user_stack(granules)
+    pr = cases.points.iloc[:10]
+    np.testing.assert_array_equal(d.point([0, 1], pr).no2, u.point([0, 1], pr).no2)
+    np.testing.assert_array_equal(d.aoi([0, 1], cases.windows[1]).quality, u.aoi([0, 1], cases.windows[1]).quality)
+    # two selections over two granules: each granule fetched whole, twice, as a HEAD plus its parts
+    sizes = [p.stat().st_size for p in granules[:2]]
+    c = d.counts()
+    assert c["request_count"] == 2 * sum(1 + -(-size // part) for size in sizes)
+    assert c["bytes_requested"] == 2 * sum(sizes)
 
 
 def test_user_stack_opens_each_granule_twice_at_most(granules, monkeypatch):

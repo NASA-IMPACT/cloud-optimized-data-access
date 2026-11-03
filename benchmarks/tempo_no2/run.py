@@ -43,7 +43,7 @@ from benchmarks.tempo_no2.measure import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_PATH = Path(__file__).parent / "expected" / "requests.json"
-ARMS = ("netcdf_user_stack", "netcdf_tuned", "virtual_icechunk", "virtual_manifeststore", "noop")
+ARMS = ("netcdf_user_stack", "netcdf_tuned", "netcdf_download", "virtual_icechunk", "virtual_manifeststore", "noop")
 # The user stack opens every granule through fsspec's read-ahead cache and is
 # slow by design; it is opt-in so routine runs stay short.
 DEFAULT_ARMS = ("netcdf_tuned", "virtual_icechunk")
@@ -150,6 +150,8 @@ def serial_phases(arm: str, request_count: int, n_obs: int) -> int:
     """
     if arm.startswith("virtual"):
         return METADATA_OBJECTS + 1
+    if arm == "netcdf_download":
+        return 2 * n_obs  # per granule, one at a time: a HEAD, then one round of concurrent ranges
     return max(1, round(request_count / max(1, n_obs)))
 
 
@@ -361,6 +363,9 @@ class ArmFactory:
         if arm == "netcdf_tuned":
             tuned_settings = {k: v for k, v in self.settings.items() if k in ("block_size", "max_workers", "page_buf_size")}
             return lambda: backends.NetcdfTuned(urls, self.store_spec(), **tuned_settings)
+        if arm == "netcdf_download":
+            download_settings = {k: v for k, v in self.settings.items() if k in ("part_bytes", "concurrency")}
+            return lambda: backends.NetcdfDownload(urls, self.store_spec(), **download_settings)
         if arm == "virtual_icechunk":
             icechunk_settings = {k: v for k, v in self.settings.items() if k.startswith("icechunk_")}
             zarr_settings = {k: v for k, v in self.settings.items() if k in ("zarr_concurrency", "zarrs_pipeline")}
@@ -466,11 +471,11 @@ def cmd_gate(args: argparse.Namespace) -> int:
     backends._progress("gate: opening the virtual store")
     virtual = arms.factory("virtual_icechunk")()
     baselines = []
-    for name in [a for a in ("netcdf_user_stack", "netcdf_tuned") if a in args.arms]:
+    for name in [a for a in ("netcdf_user_stack", "netcdf_tuned", "netcdf_download") if a in args.arms]:
         backends._progress(f"gate: building {name}")
         baselines.append(arms.factory(name)())
     if not baselines:
-        raise SystemExit("gate: --arms must include at least one file arm (netcdf_user_stack, netcdf_tuned)")
+        raise SystemExit("gate: --arms must include at least one file arm (netcdf_user_stack, netcdf_tuned, netcdf_download)")
     cases = [c for c in cases_mod.matrix(headline_only=False) if c.window == args.window]
     backends._progress(f"gate: {len(cases)} cases over {len(payload['granules'])} observations; one line per comparison follows")
     table = run_gate(baselines, virtual, cases, spatial, len(payload["granules"]))

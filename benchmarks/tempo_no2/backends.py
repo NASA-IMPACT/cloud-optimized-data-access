@@ -270,25 +270,45 @@ def _tuned_read(
     store, trace = traced_store(build_store(store_spec))
     kwargs = {"page_buf_size": page_buf_size} if paged else {}
     with BlockStoreReader(store, url_path, block_size=block_size) as reader, h5py.File(reader, "r", **kwargs) as handle:
-        t = _source_time(handle)
-        out = []
-        for path in (NO2_PATH, QUALITY_PATH):
-            dataset = handle[path]
-            lead = (0,) * (dataset.ndim - 2)
-            if kind == "aoi":
-                out.append(_decode_cf(dataset, dataset[lead + (lat, lon)]))
-                continue
-            lat_idx, lon_idx = np.asarray(lat), np.asarray(lon)
-            ch, cw = dataset.chunks[-2], dataset.chunks[-1]
-            values = np.full(len(lat_idx), np.nan)
-            # One read per touched chunk, then pick the points inside it.
-            for key in {(int(a) // ch, int(b) // cw) for a, b in zip(lat_idx, lon_idx, strict=True)}:
-                ys, xs = slice(key[0] * ch, (key[0] + 1) * ch), slice(key[1] * cw, (key[1] + 1) * cw)
-                block = _decode_cf(dataset, dataset[lead + (ys, xs)])
-                inside = (lat_idx // ch == key[0]) & (lon_idx // cw == key[1])
-                values[inside] = block[lat_idx[inside] - ys.start, lon_idx[inside] - xs.start]
-            out.append(values)
-    return t, out[0], out[1], trace_counts(trace)
+        t, no2, quality = _select(handle, kind, lat, lon)
+    return t, no2, quality, trace_counts(trace)
+
+
+def _select(handle: h5py.File, kind: str, lat: Any, lon: Any) -> tuple[np.datetime64, np.ndarray, np.ndarray]:
+    """The time, NO₂ and quality flag for an AOI window or a point set from one open granule."""
+    out = []
+    for path in (NO2_PATH, QUALITY_PATH):
+        dataset = handle[path]
+        lead = (0,) * (dataset.ndim - 2)
+        if kind == "aoi":
+            out.append(_decode_cf(dataset, dataset[lead + (lat, lon)]))
+            continue
+        lat_idx, lon_idx = np.asarray(lat), np.asarray(lon)
+        ch, cw = dataset.chunks[-2], dataset.chunks[-1]
+        values = np.full(len(lat_idx), np.nan)
+        # One read per touched chunk, then pick the points inside it.
+        for key in {(int(a) // ch, int(b) // cw) for a, b in zip(lat_idx, lon_idx, strict=True)}:
+            ys, xs = slice(key[0] * ch, (key[0] + 1) * ch), slice(key[1] * cw, (key[1] + 1) * cw)
+            block = _decode_cf(dataset, dataset[lead + (ys, xs)])
+            inside = (lat_idx // ch == key[0]) & (lon_idx // cw == key[1])
+            values[inside] = block[lat_idx[inside] - ys.start, lon_idx[inside] - xs.start]
+        out.append(values)
+    return _source_time(handle), out[0], out[1]
+
+
+def store_path(store_spec: dict[str, Any], url: str) -> str:
+    """A manifest URL → the path of that object in the store ``store_spec`` builds."""
+    if store_spec["kind"] == "local":
+        return urlparse(url).path
+    if store_spec["kind"] == "http":
+        base = store_spec["base_url"].rstrip("/") + "/"
+        if url.startswith(base):
+            return url[len(base):]
+        u = urlparse(url)  # an s3:// manifest URL: bucket/key under the endpoint
+        return f"{u.netloc}{u.path}"
+    path = urlparse(url).path.lstrip("/")
+    prefix = store_spec.get("prefix") or ""
+    return path[len(prefix):].lstrip("/") if prefix and path.startswith(prefix) else path
 
 
 def _warm_worker(_: int) -> int:
@@ -317,7 +337,7 @@ class NetcdfTuned:
         self.urls = list(urls)
         self.store_spec = store_spec
         self.block_size, self.max_workers, self.page_buf_size = block_size, max_workers, page_buf_size
-        self._paths = [self._path(url) for url in self.urls]
+        self._paths = [store_path(store_spec, url) for url in self.urls]
         self._counts: dict[str, Any] = {"request_count": 0, "bytes_requested": 0, "requests_by_method": {}, "kind": CLIENT_RANGES}
         self._pool: ProcessPoolExecutor | None = None
         store, trace = traced_store(build_store(store_spec))
@@ -336,19 +356,6 @@ class NetcdfTuned:
             "page_buf_size": page_buf_size if self.paged else 0,
             "paged": self.paged,
         }
-
-    def _path(self, url: str) -> str:
-        if self.store_spec["kind"] == "local":
-            return urlparse(url).path
-        if self.store_spec["kind"] == "http":
-            base = self.store_spec["base_url"].rstrip("/") + "/"
-            if url.startswith(base):
-                return url[len(base):]
-            u = urlparse(url)  # an s3:// manifest URL: bucket/key under the endpoint
-            return f"{u.netloc}{u.path}"
-        path = urlparse(url).path.lstrip("/")
-        prefix = self.store_spec.get("prefix") or ""
-        return path[len(prefix):].lstrip("/") if prefix and path.startswith(prefix) else path
 
     def _add_counts(self, c: dict[str, Any]) -> None:
         self._counts["request_count"] += c["request_count"]
@@ -389,6 +396,52 @@ class NetcdfTuned:
 
     def counts(self) -> dict[str, Any] | None:
         return {k: (dict(v) if isinstance(v, dict) else v) for k, v in self._counts.items()}
+
+
+# --- arm: the whole file into memory, then HDF5 from memory ---------------------
+
+
+class NetcdfDownload:
+    """Each granule whole into memory in concurrent range reads, then h5py on
+    the in-memory file image: no round trips after the download.
+
+    The other end of the bracket from range reads: every byte of the file,
+    but the network's full concurrent rate.
+    """
+
+    name = "netcdf_download"
+
+    def __init__(self, urls: Sequence[str], store_spec: dict[str, Any], part_bytes: int = 16 * 2**20, concurrency: int = 16) -> None:
+        self.store, self._trace = traced_store(build_store(store_spec))
+        self._paths = [store_path(store_spec, url) for url in urls]
+        self.part_bytes, self.concurrency = part_bytes, concurrency
+        self.settings: dict[str, Any] = {"part_bytes": part_bytes, "concurrency": concurrency, "parse": "h5py file image"}
+
+    def _run(self, observations: list[int], kind: str, lat: Any, lon: Any) -> SelectionResult:
+        import asyncio
+
+        from benchmarks.tempo_no2.counters import fetch_object
+
+        results = []
+        # shortcut: one granule at a time, no overlap of one download with the previous parse; pipeline them if multi-granule cells matter
+        for o in observations:
+            data = asyncio.run(fetch_object(self.store, self._paths[o], part_bytes=self.part_bytes, concurrency=self.concurrency))
+            with h5py.File.in_memory(data) as handle:
+                results.append(_select(handle, kind, lat, lon))
+        return SelectionResult(
+            np.asarray([r[0] for r in results], dtype="datetime64[ns]"),
+            np.stack([r[1] for r in results]),
+            np.stack([r[2] for r in results]),
+        )
+
+    def point(self, observations: list[int], point_rows: pd.DataFrame) -> SelectionResult:
+        return self._run(observations, "point", point_rows["lat_index"].to_numpy(), point_rows["lon_index"].to_numpy())
+
+    def aoi(self, observations: list[int], window: tuple[slice, slice]) -> SelectionResult:
+        return self._run(observations, "aoi", window[0], window[1])
+
+    def counts(self) -> dict[str, Any] | None:
+        return trace_counts(self._trace)
 
 
 # --- arm: the access layer ----------------------------------------------------

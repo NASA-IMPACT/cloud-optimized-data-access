@@ -31,7 +31,7 @@ from benchmarks.tempo_no2.measure import (
 )
 from benchmarks.tempo_no2.run import DEFAULT_ARMS, DEFAULT_INSTANCE_RATE, parse_arms
 
-ARMS = ("netcdf_user_stack", "netcdf_tuned", "virtual_icechunk")
+ARMS = ("netcdf_user_stack", "netcdf_tuned", "netcdf_download", "virtual_icechunk")
 CHECK_CASE = Case("point", 10, "1d")
 CATALOG_REPS = 3
 CONCURRENCY_FACTOR_CASE = Case("aoi", 100, "1d")
