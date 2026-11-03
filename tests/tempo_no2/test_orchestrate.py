@@ -38,10 +38,19 @@ def test_plan_is_shuffled_within_blocks_deterministically():
     assert arms != sorted(arms) or arms != ["netcdf_tuned", "netcdf_user_stack", "virtual_icechunk"] * 2
 
 
-def test_estimate_scales_by_observations():
-    e = estimate(plan(True, arms=ALL_TIMED), smoke_rows(), {"1d": 12, "1w": 84, "1m": 360}, 0.192)
+def test_estimate_scales_by_observations_and_chunks_not_points(lat, lon):
+    from benchmarks.tempo_no2.cases import prepare_spatial_cases
+
+    spatial = prepare_spatial_cases(lat, lon)
+    e = estimate(plan(True, arms=ALL_TIMED), smoke_rows(), {"1d": 12, "1w": 84, "1m": 360}, 0.192, spatial=spatial)
     assert e.trials == 255 and e.requests_total > 0 and e.usd > 0 and e.hours > 0
     assert set(e.requests_by_bucket) == {"asdc", "mirror"}
+    # smoke rows: ~2 s per single-observation trial; a day is 12 observations and 250
+    # points touch a few chunks, not 250× the work. The whole headline matrix is well under 3 h.
+    assert e.hours < 3
+    one = estimate([s for s in plan(True, arms=ALL_TIMED) if s.case.case_size == 10 and s.case.workload == "point"][:1], smoke_rows(), {"1d": 12}, 0.192, spatial=spatial)
+    big = estimate([s for s in plan(True, arms=ALL_TIMED) if s.case.case_size == 250 and s.case.workload == "point"][:1], smoke_rows(), {"1d": 12}, 0.192, spatial=spatial)
+    assert big.hours < 10 * one.hours
 
 
 def test_orchestrate_keeps_failed_trial_as_row(tmp_path):

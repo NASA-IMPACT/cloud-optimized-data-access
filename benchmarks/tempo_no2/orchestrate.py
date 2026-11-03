@@ -95,8 +95,27 @@ def _aoi_chunks(size_km: int) -> int:
     return max(1, total)
 
 
-def estimate(specs: list[TrialSpec], smoke_rows: list[TrialRow], n_obs: dict[str, int], instance_rate_usd_h: float) -> Estimate:
-    """Project the matrix from the smoke run's per-trial seconds and requests."""
+def _point_chunks(spatial: Any, n_points: int) -> int:
+    """Distinct chunks the first ``n_points`` touch, summed over the pinned variables."""
+    rows = spatial.points.iloc[:n_points]
+    lat_idx, lon_idx = rows["lat_index"].to_numpy(), rows["lon_index"].to_numpy()
+    total = 0
+    for chunks, itemsize in VARIABLES.values():
+        n, _ = static_minimum_requests(GRID_SHAPE, chunks, [0], lat_idx, lon_idx, itemsize=itemsize)
+        total += n
+    return max(1, total)
+
+
+def estimate(
+    specs: list[TrialSpec], smoke_rows: list[TrialRow], n_obs: dict[str, int], instance_rate_usd_h: float, spatial: Any | None = None
+) -> Estimate:
+    """Project the matrix from the smoke run's per-trial seconds and requests.
+
+    Open cost is constant per trial. Retrieval and processing scale with the
+    observation count and with the chunks a selection touches (points are
+    read by chunk, so 250 points cost a few chunks, not 250 reads). Without
+    ``spatial`` the point ratio falls back to the chunk grid's worst case.
+    """
     by_key = {(r.arm, r.workload): r for r in smoke_rows if r.status == "ok" and r.window == "1d"}
     seconds, requests, by_bucket = 0.0, 0, {"asdc": 0, "mirror": 0}
     for s in specs:
@@ -105,11 +124,16 @@ def estimate(specs: list[TrialSpec], smoke_rows: list[TrialRow], n_obs: dict[str
             continue
         scale = n_obs[s.case.window] / max(1, base.observation_count or 1)
         if s.case.workload == "point":
-            scale *= s.case.case_size / SMOKE_CASE_SIZE["point"]
+            if spatial is not None:
+                scale *= _point_chunks(spatial, s.case.case_size) / _point_chunks(spatial, SMOKE_CASE_SIZE["point"])
+            else:
+                scale *= min(s.case.case_size, 16)  # worst case: every point in its own chunk, bounded by the grid
         else:
             scale *= _aoi_chunks(s.case.case_size) / _aoi_chunks(SMOKE_CASE_SIZE["aoi"])
+        open_s = base.open_seconds or 0.0
+        work_s = max(0.0, (base.end_to_end_seconds or 0.0) - open_s)
         req = math.ceil((base.request_count or 0) * scale)
-        seconds += (base.end_to_end_seconds or 0) * scale
+        seconds += open_s + work_s * scale
         requests += req
         if s.arm.startswith("virtual"):
             by_bucket["mirror"] += 4
@@ -274,7 +298,15 @@ def main(argv: list[str] | None = None) -> int:
         mp = manifest_path(window)
         if mp.exists():
             n_obs[window] = len(json.loads(mp.read_text())["granules"])
-    e = estimate(specs, smoke_rows, n_obs, args.instance_rate_usd_h)
+    spatial = None
+    mp_1d = manifest_path("1d")
+    if mp_1d.exists():
+        from benchmarks.tempo_no2.cases import grid_arrays, prepare_spatial_cases
+
+        payload = json.loads(mp_1d.read_text())
+        if "grid" in payload:
+            spatial = prepare_spatial_cases(*grid_arrays(payload["grid"]))
+    e = estimate(specs, smoke_rows, n_obs, args.instance_rate_usd_h, spatial=spatial)
     print(format_estimate(e))
     if args.estimate or not args.yes:
         if not args.estimate:
