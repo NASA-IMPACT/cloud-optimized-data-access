@@ -292,9 +292,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--access", choices=("s3", "https"), default="s3", help="s3: in us-west-2; https: from anywhere via the distribution endpoint")
     p.add_argument("--arms", type=parse_arms, default=DEFAULT_ARMS, help="comma-separated timed arms (default netcdf_tuned,virtual_icechunk; add netcdf_user_stack to include the user stack)")
     p.add_argument("--limit", type=int, default=None, help="run only the first N planned trials (a quick end-to-end check)")
+    p.add_argument("--reps", type=int, default=None, help="repetitions per cell (default 10 for headline cells, 5 for the rest); a shorter session is labelled by its n")
+    p.add_argument("--cache", choices=("cold", "warm_process", "both"), default="both", help="cache states to run (default both)")
     args = p.parse_args(argv)
 
-    specs = plan(args.headline_only, arms=args.arms)
+    cache_states = ("cold", "warm_process") if args.cache == "both" else (args.cache,)
+    reps = {} if args.reps is None else {"reps_headline": args.reps, "reps_other": min(args.reps, 5)}
+    specs = plan(args.headline_only, arms=args.arms, cache_states=cache_states, **reps)
     if args.limit:
         print(f"limit: running {min(args.limit, len(specs))} of {len(specs)} planned trials")
         specs = specs[: args.limit]

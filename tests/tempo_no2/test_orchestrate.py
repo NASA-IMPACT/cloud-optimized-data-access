@@ -143,3 +143,11 @@ def test_estimate_scales_a_scan_by_the_whole_grid_not_the_day(lat, lon):
     scan = estimate([TrialSpec("netcdf_tuned", Case("scan", 1, "1d"), 0, "cold")], smoke_rows(), {"1d": 12}, 0.192, spatial=spatial)
     box = estimate([TrialSpec("netcdf_tuned", Case("aoi", 50, "1d"), 0, "cold")], smoke_rows(), {"1d": 12}, 0.192, spatial=spatial)
     assert scan.requests_total > box.requests_total  # one whole scan touches more chunks than twelve small boxes
+
+
+def test_reps_and_cache_flags_shrink_the_plan(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    rc = main(["--run-id", "r", "--headline-only", "--smoke-results", str(SMOKE), "--estimate", "--reps", "3", "--cache", "cold"])
+    out = capsys.readouterr().out
+    # 5 cells × 2 arms × 3 reps × 1 cache state + noop + checker + 3 one-worker + 3 catalog
+    assert rc == 0 and "trials: 38" in out
