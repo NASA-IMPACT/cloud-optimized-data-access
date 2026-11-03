@@ -107,7 +107,7 @@ def probe_paging(h5file: Any) -> bool:
     return strategy == h5py.h5f.FSPACE_STRATEGY_PAGE
 
 
-def probe_network(store: Any, path: str, *, heads: int = 20, range_reads: int = 5, range_bytes: int = 16 * 2**20) -> dict[str, float]:
+def probe_network(store: Any, path: str, *, heads: int = 20, range_reads: int = 5, range_bytes: int = 16 * 2**20) -> dict[str, float | None]:
     """Median RTT (ms) from HEADs and bandwidth (MB/s) from large range reads.
 
     ``store`` is an obstore store; ``path`` an object of at least
@@ -123,6 +123,8 @@ def probe_network(store: Any, path: str, *, heads: int = 20, range_reads: int = 
     rtts.sort()
     rtt_ms = 1000 * rtts[len(rtts) // 2]
     total_bytes, total_s = 0, 0.0
+    if range_reads == 0:
+        return {"rtt_ms_median": rtt_ms, "bandwidth_mb_s": None}
     for i in range(range_reads):
         t0 = time.perf_counter()
         buf = obstore.get_range(store, path, start=i * range_bytes, end=(i + 1) * range_bytes)
