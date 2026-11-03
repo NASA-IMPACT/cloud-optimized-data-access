@@ -1,0 +1,31 @@
+# Dependabot: security updates plus a weekly grouped version bump for each
+# ecosystem. Security alerts themselves are a repository setting, enabled with:
+#   gh api -X PUT repos/NASA-IMPACT/cloud-optimized-data-access/vulnerability-alerts
+#   gh api -X PUT repos/NASA-IMPACT/cloud-optimized-data-access/automated-security-fixes
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    labels: [dependencies, python]
+
+  - package-ecosystem: npm
+    directory: /decks/coda-presentation
+    schedule:
+      interval: weekly
+    groups:
+      deck:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    labels: [dependencies, deck]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies, ci]
