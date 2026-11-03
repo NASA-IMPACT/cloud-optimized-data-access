@@ -227,3 +227,10 @@ decks/*/dist/
 out/
 benchmark-scratch/
 .superpowers/
+
+# OS and editor litter
+.DS_Store
+Thumbs.db
+*~
+.idea/
+.vscode/
