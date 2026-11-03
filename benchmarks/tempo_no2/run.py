@@ -421,9 +421,14 @@ def cmd_gate(args: argparse.Namespace) -> int:
     payload = load_manifest(args.window)
     arms = ArmFactory(payload, access=args.access)
     spatial = arms.spatial()
+    backends._progress("gate: opening the virtual store")
     virtual = arms.factory("virtual_icechunk")()
-    baselines = [arms.factory(a)() for a in ("netcdf_user_stack", "netcdf_tuned")]
+    baselines = []
+    for name in ("netcdf_user_stack", "netcdf_tuned"):
+        backends._progress(f"gate: building {name}")
+        baselines.append(arms.factory(name)())
     cases = [c for c in cases_mod.matrix(headline_only=False) if c.window == args.window]
+    backends._progress(f"gate: {len(cases)} cases over {len(payload['granules'])} observations; one line per comparison follows")
     table = run_gate(baselines, virtual, cases, spatial, len(payload["granules"]))
     print(table.to_string(index=False))
     print(f"max time offset: {virtual.assert_one_to_one():.1f} s")

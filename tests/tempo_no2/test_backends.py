@@ -64,7 +64,7 @@ def test_tuned_matches_user_stack_and_counts_requests(granules, cases):
     assert t.settings["max_workers"] == 2 and t.settings["workers"] == "processes"
 
 
-def test_user_stack_opens_each_granule_once(granules, monkeypatch):
+def test_user_stack_opens_each_granule_twice_at_most(granules, monkeypatch):
     import fsspec
 
     fs = fsspec.filesystem("file")
@@ -77,7 +77,8 @@ def test_user_stack_opens_each_granule_once(granules, monkeypatch):
 
     monkeypatch.setattr(fs, "open", counting_open)
     NetcdfUserStack([str(p) for p in granules], filesystem=fs)
-    assert len(opened) == len(granules)
+    # one open for the product group and one for the root time axis; never a third
+    assert len(opened) == 2 * len(granules)
 
 
 def test_container_stores_cover_both_reference_forms(virtual_repo):
@@ -174,3 +175,14 @@ def test_container_stores_builds_http_stores_for_https_containers():
     stores = container_stores(repo, credentials=None, client_options={"default_headers": {"Authorization": "Bearer x"}})
     assert isinstance(stores["vcc://asdc"], HTTPStore)
     assert stores["https://data.asdc.earthdata.nasa.gov/asdc-prod-protected"] is stores["vcc://asdc"]
+
+
+def test_tuned_arm_reuses_one_worker_pool(granules, cases):
+    t = NetcdfTuned([f"file://{p}" for p in granules], {"kind": "local"}, max_workers=2)
+    first = t.aoi([0, 1], cases.windows[1])
+    pool = t._pool
+    second = t.aoi([0, 1], cases.windows[1])
+    assert pool is not None and t._pool is pool
+    np.testing.assert_array_equal(first.no2, second.no2)
+    t.close()
+    assert t._pool is None

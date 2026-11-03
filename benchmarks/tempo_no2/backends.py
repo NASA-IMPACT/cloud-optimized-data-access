@@ -183,24 +183,30 @@ def _source_time(handle: h5py.File) -> np.datetime64:
 
 
 class NetcdfUserStack:
-    """earthaccess's S3 filesystem + ``xarray.open_datatree(engine="h5netcdf")``,
-    default settings, one open per granule."""
+    """earthaccess's filesystem + ``xarray.open_mfdataset(engine="h5netcdf",
+    group="product")``, default settings: what the earthaccess docs show.
+
+    The time axis lives in the root group, so each granule is opened a second
+    time for it. Every open goes through fsspec's default read-ahead cache,
+    which fetches a block per HDF5 metadata read; that cost is the point.
+    """
 
     name = "netcdf_user_stack"
 
     def __init__(self, urls: Sequence[str], filesystem: Any | None = None) -> None:
         self.urls = list(urls)
-        self.settings: dict[str, Any] = {"engine": "h5netcdf", "defaults": True}
+        self.settings: dict[str, Any] = {"engine": "h5netcdf", "group": "product", "defaults": True}
         fs = filesystem if filesystem is not None else _earthaccess_filesystem()
         self._counter: S3fsCounter | None = None
         if hasattr(fs, "s3"):
             self._counter = S3fsCounter()
             self._counter.attach(fs)
-        parts = []
-        for url in self.urls:
-            tree = xr.open_datatree(fs.open(url), engine="h5netcdf")
-            parts.append(tree["product"].to_dataset()[[NO2_VAR, QUALITY_VAR]])
-        self.dataset = xr.concat(parts, dim="time", coords="minimal", compat="override", combine_attrs="override")
+        kwargs: dict[str, Any] = {"engine": "h5netcdf", "combine": "nested", "concat_dim": "time"}
+        _progress(f"user stack: opening {len(self.urls)} granules (product group)")
+        self.dataset = xr.open_mfdataset([fs.open(u) for u in self.urls], group="product", **kwargs)[[NO2_VAR, QUALITY_VAR]]
+        _progress("user stack: opening the root group for the time axis")
+        self.root = xr.open_mfdataset([fs.open(u) for u in self.urls], **kwargs)
+        self.dataset = self.dataset.assign_coords(time=self.root["time"])
 
     def _result(self, observations: list[int], indexers: dict[str, Any]) -> SelectionResult:
         selected = self.dataset.isel(time=observations, **indexers).compute()
@@ -224,6 +230,13 @@ class NetcdfUserStack:
 
     def counts(self) -> dict[str, Any] | None:
         return self._counter.counts() if self._counter else None
+
+
+def _progress(message: str) -> None:
+    import sys
+    import time as _time
+
+    print(f"[{_time.strftime('%H:%M:%S')}] {message}", file=sys.stderr, flush=True)
 
 
 def _earthaccess_filesystem(access: str = "s3") -> Any:
@@ -271,6 +284,11 @@ def _tuned_read(
     return t, out[0], out[1], trace_counts(trace)
 
 
+def _warm_worker(_: int) -> int:
+    """Imports done; the worker is ready."""
+    return 0
+
+
 class NetcdfTuned:
     """h5py over an 8 MiB block reader, one process per granule (up to
     ``max_workers`` at once), points batched per chunk.
@@ -294,10 +312,16 @@ class NetcdfTuned:
         self.block_size, self.max_workers, self.page_buf_size = block_size, max_workers, page_buf_size
         self._paths = [self._path(url) for url in self.urls]
         self._counts: dict[str, Any] = {"request_count": 0, "bytes_requested": 0, "requests_by_method": {}, "kind": CLIENT_RANGES}
+        self._pool: ProcessPoolExecutor | None = None
         store, trace = traced_store(build_store(store_spec))
         with BlockStoreReader(store, self._paths[0], block_size=block_size) as reader, h5py.File(reader, "r") as handle:
             self.paged = probe_paging(handle)
         self._add_counts(trace_counts(trace))
+        if max_workers > 1:
+            # Start the workers now: client setup belongs in the open phase, not in every read.
+            # spawn, not fork: a forked child inherits obstore's async runtime and deadlocks in its first request
+            self._pool = ProcessPoolExecutor(max_workers, mp_context=multiprocessing.get_context("spawn"))
+            list(self._pool.map(_warm_worker, range(max_workers)))
         self.settings: dict[str, Any] = {
             "block_size": block_size,
             "max_workers": max_workers,
@@ -325,14 +349,23 @@ class NetcdfTuned:
         for k, v in c["requests_by_method"].items():
             self._counts["requests_by_method"][k] = self._counts["requests_by_method"].get(k, 0) + v
 
+    def close(self) -> None:
+        if self._pool is not None:
+            self._pool.shutdown(wait=True)
+            self._pool = None
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
+
     def _run(self, observations: list[int], kind: str, lat: Any, lon: Any) -> SelectionResult:
         jobs = [(self.store_spec, self._paths[o], self.block_size, self.page_buf_size, self.paged, kind, lat, lon) for o in observations]
-        if self.max_workers == 1:
+        if self._pool is None:
             results = [_tuned_read(*job) for job in jobs]
         else:
-            # spawn, not fork: a forked child inherits obstore's async runtime and deadlocks in its first request
-            with ProcessPoolExecutor(min(self.max_workers, len(jobs)), mp_context=multiprocessing.get_context("spawn")) as pool:
-                results = list(pool.map(_tuned_read, *zip(*jobs, strict=True)))
+            results = list(self._pool.map(_tuned_read, *zip(*jobs, strict=True)))
         for r in results:
             self._add_counts(r[3])
         return SelectionResult(

@@ -42,3 +42,28 @@ def test_gate_passed_requires_a_real_pass():
     assert gate_passed(ok) is True
     bad = pd.concat([ok, pd.DataFrame([{"case": "point:1:1d", "arm": "netcdf_tuned", "observation": 1, "status": "fail: x"}])])
     assert gate_passed(bad) is False
+
+
+def test_run_gate_reports_progress_per_comparison(capsys):
+    from benchmarks.tempo_no2.gate import run_gate
+
+    class Arm:
+        def __init__(self, name):
+            self.name = name
+            self.settings = {}
+
+        def point(self, observations, point_rows):
+            return SelectionResult(T, np.ones((1, len(point_rows))), np.zeros((1, len(point_rows))))
+
+        def aoi(self, observations, window):
+            return SelectionResult(T, np.ones((1, 2, 2)), np.zeros((1, 2, 2)))
+
+        def counts(self):
+            return None
+
+    points = pd.DataFrame({"lat_index": [0, 1], "lon_index": [0, 1]})
+    spatial = type("S", (), {"points": points, "windows": {50: (slice(0, 2), slice(0, 2))}})()
+    table = run_gate([Arm("netcdf_tuned")], Arm("virtual_icechunk"), [Case("point", 1, "1d")], spatial, n_obs=2)
+    assert list(table["status"]) == ["pass", "pass"]
+    err = capsys.readouterr().err
+    assert "point:1:1d" in err and "observation 0" in err and "pass" in err and "observation 1" in err

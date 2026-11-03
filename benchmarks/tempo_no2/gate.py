@@ -55,11 +55,15 @@ def run_gate(
     n_obs: int,
     rng: np.random.Generator | None = None,
 ) -> pd.DataFrame:
+    import sys
+    import time
+
     rng = rng or np.random.default_rng(0)
     rows: list[dict[str, Any]] = []
     for case in cases:
         for observation in observations_for_gate(case, n_obs, rng):
             for arm in baselines:
+                t0 = time.perf_counter()
                 try:
                     if case.workload == "point":
                         rows_ = spatial.points.iloc[: case.case_size]
@@ -70,6 +74,7 @@ def run_gate(
                 except Exception as error:  # a mismatch or a read failure is a row, not a crash
                     status = f"fail: {type(error).__name__}: {str(error)[:300]}"
                 rows.append({"case": str(case), "arm": arm.name, "observation": observation, "status": status})
+                print(f"gate {case} {arm.name} observation {observation}: {status} ({time.perf_counter() - t0:.1f} s)", file=sys.stderr, flush=True)
     return pd.DataFrame(rows, columns=["case", "arm", "observation", "status"])
 
 
