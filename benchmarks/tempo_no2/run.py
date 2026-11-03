@@ -202,6 +202,8 @@ def run_trial(
             processing_start = time.perf_counter()
             _ = backends.quality_mask(selection)
             row.processing_seconds = time.perf_counter() - processing_start
+            if backend is None and hasattr(b, "close"):
+                b.close()  # cold trial: wait for worker processes so their CPU time is counted
         row.end_to_end_seconds = time.perf_counter() - total_start
         row.discovery_plus_open_seconds = row.open_seconds
         row.rendering_seconds = 0.0

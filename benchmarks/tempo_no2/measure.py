@@ -174,16 +174,21 @@ class ResourceDelta:
 
 @contextmanager
 def resource_usage() -> Iterator[ResourceDelta]:
+    """CPU seconds and peak RSS over the block, this process plus any child
+    processes that have been waited on (the tuned arm's workers)."""
     delta = ResourceDelta()
-    before = resource.getrusage(resource.RUSAGE_SELF)
+    before_self = resource.getrusage(resource.RUSAGE_SELF)
+    before_kids = resource.getrusage(resource.RUSAGE_CHILDREN)
     try:
         yield delta
     finally:
-        after = resource.getrusage(resource.RUSAGE_SELF)
-        delta.cpu_user_s = after.ru_utime - before.ru_utime
-        delta.cpu_sys_s = after.ru_stime - before.ru_stime
-        # Linux reports ru_maxrss in KiB; macOS in bytes.
-        delta.peak_rss_bytes = after.ru_maxrss * (1024 if sys.platform.startswith("linux") else 1)
+        after_self = resource.getrusage(resource.RUSAGE_SELF)
+        after_kids = resource.getrusage(resource.RUSAGE_CHILDREN)
+        delta.cpu_user_s = (after_self.ru_utime - before_self.ru_utime) + (after_kids.ru_utime - before_kids.ru_utime)
+        delta.cpu_sys_s = (after_self.ru_stime - before_self.ru_stime) + (after_kids.ru_stime - before_kids.ru_stime)
+        # Linux reports ru_maxrss in KiB; macOS in bytes. Children's peak is reported separately by the kernel; take the larger.
+        scale = 1024 if sys.platform.startswith("linux") else 1
+        delta.peak_rss_bytes = max(after_self.ru_maxrss, after_kids.ru_maxrss) * scale
 
 
 def floor_seconds(serial_phases: int, rtt_s: float, bytes_total: int, bandwidth_bps: float) -> float:

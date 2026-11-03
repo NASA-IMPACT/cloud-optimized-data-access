@@ -29,3 +29,11 @@ Placeholder title
 # Results: requests and floor
 
 <ResultsPanel kind="requests" />
+
+---
+
+# Figures from the same run
+
+<FigureGrid />
+
+<p class="text-xs opacity-70">Written by analyze.py into public/figures/ as SVG and PNG. Blank until the first run.</p>

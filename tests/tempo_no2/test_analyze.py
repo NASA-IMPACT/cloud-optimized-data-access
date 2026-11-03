@@ -79,7 +79,8 @@ def test_publish_writes_deck_copy_and_pointer(tmp_path, results_small_dir):
     copy = json.loads((deck / "public" / "results" / "summary.json").read_text())
     pointer = json.loads((results_small_dir.parent / "latest.json").read_text())
     assert copy["run_id"] == pointer["run_id"] == "small"
-    assert {p.name for p in (deck / "public" / "figures").iterdir()} == {"phases.svg", "requests.svg", "floor_ratio.svg", "speedup.svg"}
+    names = {p.name for p in (deck / "public" / "figures").iterdir()}
+    assert names == {f"{n}.{ext}" for n in ("phases", "requests", "floor_ratio", "speedup") for ext in ("svg", "png")}
     assert (results_small_dir / "summary.json").exists()
 
 

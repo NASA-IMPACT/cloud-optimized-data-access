@@ -81,3 +81,19 @@ def test_host_info_marks_jupyterhub_sessions(monkeypatch):
     monkeypatch.setattr(measure, "_imds", lambda path, timeout=0.5: {"instance-type": "r5.xlarge", "placement/availability-zone": "us-west-2a"}[path])
     info = measure.host_info()
     assert info["host_kind"] == "jupyterhub" and info["instance_type"] == "r5.xlarge"
+
+
+def test_resource_usage_includes_child_processes():
+    import multiprocessing as mp
+
+    def burn():
+        x = 0
+        for i in range(3_000_000):
+            x += i * i
+
+    with resource_usage() as r:
+        # fork, so the nested function needs no pickling; nothing here touches obstore
+        p = mp.get_context("fork").Process(target=burn)
+        p.start()
+        p.join()
+    assert r.cpu_user_s > 0.05  # the child's CPU time counts (RUSAGE_CHILDREN after join)

@@ -265,9 +265,11 @@ def figures(summary: dict[str, Any], out_dir: Path) -> list[Path]:
 
 
 def _save(fig: Any, path: Path) -> Path:
-    fig.savefig(path, format="svg")
+    """Write the figure as SVG (for the deck) and PNG (for anything else) side by side."""
     import matplotlib.pyplot as plt
 
+    fig.savefig(path, format="svg")
+    fig.savefig(path.with_suffix(".png"), format="png", dpi=160)
     plt.close(fig)
     return path
 
@@ -281,7 +283,8 @@ def publish(run_dir: Path, deck_dir: Path) -> None:
     (deck_dir / "public" / "figures").mkdir(parents=True, exist_ok=True)
     shutil.copy(run_dir / "summary.json", deck_dir / "public" / "results" / "summary.json")
     for p in fig_paths:
-        shutil.copy(p, deck_dir / "public" / "figures" / p.name)
+        for out in (p, p.with_suffix(".png")):
+            shutil.copy(out, deck_dir / "public" / "figures" / out.name)
     (run_dir.parent / "latest.json").write_text(json.dumps({"run_id": summary["run_id"]}) + "\n")
 
 

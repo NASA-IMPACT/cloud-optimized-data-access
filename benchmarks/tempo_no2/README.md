@@ -98,10 +98,13 @@ records:
   - `http-calls` (user stack): a botocore `after-call` hook, one per
     completed S3 operation, with retries from the response metadata; bytes
     counted for GetObject only.
-  - `static-minimum` (Icechunk): computed from the store's chunk grid.
+  - `static-minimum` (Icechunk): computed from the store's chunk grid. Its
+    `bytes_requested` is the sum of uncompressed chunk sizes, an upper
+    bound; `net_rx_bytes` is what the wire carried.
   Bytes on the wire are measured independently of all three as
   `net_rx_bytes` on a dedicated host. CPU time covers every thread, Rust
-  included, because it comes from `getrusage`. `requests_by_method`,
+  included, and the tuned arm's worker processes, because it comes from
+  `getrusage` for the process and its waited-on children. `requests_by_method`,
   `retries` (botocore `ResponseMetadata.RetryAttempts` for the user stack;
   null with a reason for the Rust clients, which do not surface retries to
   Python), and `net_rx_bytes` on a dedicated host, minus the session's
