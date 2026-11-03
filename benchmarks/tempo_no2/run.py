@@ -228,7 +228,10 @@ def run_trial(
         retry_log.detach()
     row.load_avg_1m = (load_before + os.getloadavg()[0]) / 2
     steal_after = cpu_steal_seconds()
-    row.cpu_steal_s = None if steal_before is None or steal_after is None else steal_after - steal_before
+    if steal_before is None or steal_after is None:
+        row.cpu_steal_s_reason = "no /proc/stat on this platform"
+    else:
+        row.cpu_steal_s = steal_after - steal_before
     if net_before is not None:
         row.net_rx_bytes = _net_rx() - net_before
     else:

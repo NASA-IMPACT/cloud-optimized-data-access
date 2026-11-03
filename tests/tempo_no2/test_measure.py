@@ -47,3 +47,19 @@ def test_resource_usage_reports_nonnegative():
     with resource_usage() as r:
         sum(range(10**5))
     assert r.cpu_user_s >= 0 and r.peak_rss_bytes > 0
+
+
+def test_resource_usage_scales_maxrss_only_on_linux(monkeypatch):
+    import resource
+
+    from benchmarks.tempo_no2 import measure
+
+    raw = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    monkeypatch.setattr(measure.sys, "platform", "darwin")
+    with resource_usage() as r:
+        pass
+    assert r.peak_rss_bytes == pytest.approx(raw, rel=0.05)  # macOS reports bytes already
+    monkeypatch.setattr(measure.sys, "platform", "linux")
+    with resource_usage() as r:
+        pass
+    assert r.peak_rss_bytes == pytest.approx(raw * 1024, rel=0.05)

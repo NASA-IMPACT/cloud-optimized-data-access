@@ -54,7 +54,11 @@ def test_run_trial_fills_phases_and_static_minimum(cases):
 
 def test_run_trial_records_host_quiet_fields(cases):
     row = run_trial(fake_backend_factory, Case("point", 10, "1d"), [0], cases, 0, "cold")
-    assert row.load_avg_1m >= 0 and row.cpu_steal_s >= 0
+    assert row.load_avg_1m >= 0
+    if row.cpu_steal_s is None:  # no /proc/stat (macOS): null with a reason, never a crash
+        assert row.cpu_steal_s_reason
+    else:
+        assert row.cpu_steal_s >= 0
 
 
 def test_noop_trial_has_zero_shape_and_ok_status(cases):

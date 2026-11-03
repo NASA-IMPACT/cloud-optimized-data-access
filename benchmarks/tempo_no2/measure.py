@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import resource
+import sys
 import time
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
@@ -75,6 +76,7 @@ class TrialRow:
     peak_rss_bytes: int | None = None
     load_avg_1m: float | None = None
     cpu_steal_s: float | None = None
+    cpu_steal_s_reason: str | None = None
     # transport
     request_count: int | None = None
     request_count_reason: str | None = None
@@ -179,7 +181,8 @@ def resource_usage() -> Iterator[ResourceDelta]:
         after = resource.getrusage(resource.RUSAGE_SELF)
         delta.cpu_user_s = after.ru_utime - before.ru_utime
         delta.cpu_sys_s = after.ru_stime - before.ru_stime
-        delta.peak_rss_bytes = after.ru_maxrss * 1024  # Linux reports KiB
+        # Linux reports ru_maxrss in KiB; macOS in bytes.
+        delta.peak_rss_bytes = after.ru_maxrss * (1024 if sys.platform.startswith("linux") else 1)
 
 
 def floor_seconds(serial_phases: int, rtt_s: float, bytes_total: int, bandwidth_bps: float) -> float:
