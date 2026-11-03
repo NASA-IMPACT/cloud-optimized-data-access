@@ -122,3 +122,41 @@ def test_limiter_names_decode_when_a_core_is_busy_and_the_network_is_not():
 
     assert _limiter(cpu_fraction=1.1, nproc=4, max_core=None, bandwidth_fraction=0.45, floor_ratio=3.4) == "cpu-decode"
     assert _limiter(cpu_fraction=0.3, nproc=4, max_core=None, bandwidth_fraction=0.45, floor_ratio=1.5) == "latency"
+
+
+def _one_granule_cells():
+    def c(arm, variant, open_s, read_s, rx, **extra):
+        return {"arm": arm, "arm_variant": variant, "workload": "scan", "case_size": 1, "window": "1d",
+                "phases": {"open": open_s, "retrieval": read_s, "processing": 0.08}, "median_s": open_s + read_s + 0.08,
+                "net_rx_bytes": rx, "bytes_requested": extra.pop("bytes_requested", None), "retrieval_split": extra.pop("split", {})}
+
+    return [
+        c("netcdf_user_stack", {}, 24.9, 1.93, 1.9e9),
+        c("netcdf_tuned", {"max_workers": 1}, 2.52, 2.01, 85e6),
+        c("virtual_icechunk", {}, 1.49, 3.01, 32e6),
+        c("netcdf_download", {}, 2.48, 2.82, 515e6, bytes_requested=515e6, split={"download_seconds": 1.15, "decode_seconds": 1.52}),
+    ]
+
+
+def test_floor_is_decode_plus_the_smallest_fetch_at_the_download_rate(tmp_path):
+    from benchmarks.tempo_no2.analyze import (
+        FLOOR_BARS,
+        floor_figure,
+        floor_seconds_for_one_granule,
+    )
+
+    cells = _one_granule_cells()
+    by_label = {label: next(c for c in cells if c["arm"] == arm) for label, arm, _ in FLOOR_BARS}
+    assert floor_seconds_for_one_granule(by_label) == pytest.approx(1.52 + 32e6 / (515e6 / 1.15))
+    assert floor_figure({"cells": cells}, tmp_path).name == "floor.svg"
+    assert floor_figure({"cells": cells[:3]}, tmp_path) is None  # no download arm: no figure, no crash
+
+
+def test_cells_carry_the_retrieval_split_median():
+    import pandas as pd
+
+    from benchmarks.tempo_no2.analyze import _split_medians
+
+    rows = pd.Series([{"download_seconds": 1.0, "decode_seconds": 2.0}, {"download_seconds": 3.0, "decode_seconds": 4.0}, float("nan"), {}])
+    assert _split_medians(rows) == {"download_seconds": 2.0, "decode_seconds": 3.0}
+    assert _split_medians(pd.Series([float("nan")])) == {}

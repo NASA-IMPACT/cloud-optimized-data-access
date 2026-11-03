@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import math
 import shutil
 import sys
@@ -116,6 +117,7 @@ def summarize(df: pd.DataFrame) -> dict[str, Any]:
                 "catalog": 0.0 if arm.startswith("virtual") else _nan_to_none(catalog.get(window)),
                 **{p: _nan_to_none(g[f"{p}_seconds"].astype(float).median()) for p in PHASES if p != "catalog"},
             },
+            "retrieval_split": _split_medians(g["retrieval_split"]),
             "request_count": _nan_to_none(g["request_count"].astype(float).median()),
             "request_count_kind": _count_kind(g["request_count_reason"]),
             "bytes_requested": _nan_to_none(g["bytes_requested"].astype(float).median()),
@@ -201,6 +203,12 @@ def _count_kind(reasons: pd.Series) -> str:
     return "client-ranges"
 
 
+def _split_medians(splits: pd.Series) -> dict[str, float]:
+    """Median of each retrieval sub-phase over the rows that timed it (rows before the field existed have none)."""
+    frame = pd.DataFrame([s for s in splits if isinstance(s, dict) and s])
+    return {k: float(frame[k].median()) for k in frame.columns}
+
+
 def _nan_to_none(x: Any) -> float | None:
     try:
         return None if x is None or math.isnan(float(x)) else float(x)
@@ -264,7 +272,79 @@ def figures(summary: dict[str, Any], out_dir: Path) -> list[Path]:
     ax.tick_params(axis="x", labelsize=7)
     fig.tight_layout()
     paths.append(_save(fig, out_dir / "speedup.svg"))
-    return paths
+    floor = floor_figure(summary, out_dir)
+    return paths + ([floor] if floor else [])
+
+
+# The one-granule figure for the deck: (label, arm, arm_variant) top to bottom.
+FLOOR_BARS = (
+    ("Default stack", "netcdf_user_stack", {}),
+    ("Tuned h5py", "netcdf_tuned", {"max_workers": 1}),
+    ("Virtual Zarr", "virtual_icechunk", {}),
+    ("Download + h5py", "netcdf_download", {}),
+)
+
+
+def floor_seconds_for_one_granule(cells: dict[str, dict[str, Any]]) -> float:
+    """Decoding the answer with the file in memory, plus the smallest fetch any arm made at the
+    download arm's measured rate: the floor every library shares."""
+    download = cells["Download + h5py"]
+    split = download["retrieval_split"]
+    rate = (download["bytes_requested"] or 0) / split["download_seconds"]
+    fewest = min(c["net_rx_bytes"] for c in cells.values() if c["net_rx_bytes"])
+    return split["decode_seconds"] + fewest / rate
+
+
+def floor_figure(summary: dict[str, Any], out_dir: Path) -> Path | None:
+    """End to end for one granule's whole scan, split into setup + open and read + decode, against the shared floor.
+    None when the run lacks any of the four cells or the download arm's split timers."""
+    import matplotlib.pyplot as plt
+
+    cells = {}
+    for label, arm, variant in FLOOR_BARS:
+        match = [c for c in summary["cells"] if c["arm"] == arm and c["arm_variant"] == variant
+                 and (c["workload"], c["case_size"], c["window"]) == ("scan", 1, "1d")]
+        if not match:
+            return None
+        cells[label] = match[0]
+    if not cells["Download + h5py"].get("retrieval_split"):
+        return None
+    floor = floor_seconds_for_one_granule(cells)
+
+    logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)  # Inter is the deck's font, often not installed where this runs
+    out_dir.mkdir(parents=True, exist_ok=True)
+    # svg.fonttype none: text stays text, so the deck renders it in Inter
+    style = {"font.family": ["Inter", "DejaVu Sans", "sans-serif"], "font.size": 13, "svg.fonttype": "none"}
+    with plt.rc_context(style):
+        return _draw_floor(cells, floor, out_dir)
+
+
+def _draw_floor(cells: dict[str, dict[str, Any]], floor: float, out_dir: Path) -> Path:
+    import matplotlib.pyplot as plt
+
+    setup_c, read_c, ink, muted = "#d97e6a", "#952f7c", "#3f3f48", "#6b6b76"  # deck palette; validated as a pair
+    fig, ax = plt.subplots(figsize=(11, 3.6))
+    labels = [label for label, _, _ in FLOOR_BARS][::-1]
+    opens = np.array([cells[label]["phases"]["open"] or 0.0 for label in labels])
+    reads = np.array([(cells[label]["phases"]["retrieval"] or 0.0) + (cells[label]["phases"]["processing"] or 0.0) for label in labels])
+    gap = 0.04  # a thin surface gap between the two segments
+    ax.barh(labels, opens - gap, color=setup_c, height=0.62, label="Setup + open")
+    ax.barh(labels, reads, left=opens, color=read_c, height=0.62, label="Read + decode")
+    for y, label in enumerate(labels):
+        ax.text(cells[label]["median_s"] + 0.3, y, f"{cells[label]['median_s']:.1f} s", va="center", color=ink)
+    ax.axvline(floor, color=ink, linewidth=1.2, linestyle=(0, (4, 3)))
+    ax.text(floor + 0.25, len(labels) - 0.45, f"floor {floor:.1f} s: decompression", color=ink, va="bottom")
+    ax.set_xlabel("seconds, one granule, whole scan (median of cold runs)", color=muted)
+    ax.set_xlim(0, max(c["median_s"] for c in cells.values()) * 1.12)
+    ax.set_ylim(-0.6, len(labels) - 0.1)
+    for side in ("top", "right", "left"):
+        ax.spines[side].set_visible(False)
+    ax.spines["bottom"].set_color(muted)
+    ax.tick_params(axis="y", length=0, colors=ink)
+    ax.tick_params(axis="x", colors=muted)
+    ax.legend(loc="lower right", frameon=False, labelcolor=ink)
+    fig.tight_layout()
+    return _save(fig, out_dir / "floor.svg")
 
 
 def _save(fig: Any, path: Path) -> Path:
