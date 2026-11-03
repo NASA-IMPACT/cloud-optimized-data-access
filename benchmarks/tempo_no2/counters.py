@@ -21,15 +21,24 @@ def traced_store(store: Any) -> tuple[TracingReadableStore, RequestTrace]:
     return TracingReadableStore(store, trace), trace
 
 
+# What a count means. The obspec tracer sees Python calls into obstore, one
+# entry per byte range; obstore's Rust side may coalesce, split or retry, so
+# the HTTP request count can differ (developmentseed/obstore#105). The
+# botocore hook sees completed S3 operations, which are HTTP requests.
+CLIENT_RANGES = "client-ranges"
+HTTP_CALLS = "http-calls"
+
+
 def trace_counts(trace: RequestTrace) -> dict[str, Any]:
     df = trace.to_dataframe()
     if df.empty:
-        return {"request_count": 0, "bytes_requested": 0, "requests_by_method": {}}
+        return {"request_count": 0, "bytes_requested": 0, "requests_by_method": {}, "kind": CLIENT_RANGES}
     by_method = df["method"].value_counts().to_dict()
     return {
         "request_count": int(len(df)),
         "bytes_requested": int(df["length"].sum()),
         "requests_by_method": {str(k): int(v) for k, v in by_method.items()},
+        "kind": CLIENT_RANGES,
     }
 
 
@@ -68,6 +77,7 @@ class S3fsCounter:
             "bytes_requested": self.bytes_requested,
             "requests_by_method": dict(self.by_method),
             "retries": self.retries,
+            "kind": HTTP_CALLS,
         }
 
 

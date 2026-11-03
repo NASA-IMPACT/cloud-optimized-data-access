@@ -88,7 +88,8 @@ def test_failed_checker_arm_does_not_abort_summary(results_small):
 def test_cells_carry_request_count_kind(results_small):
     s = summarize(results_small)
     assert cell(s, "virtual_icechunk", 10)["request_count_kind"] == "static-minimum"
-    assert cell(s, "netcdf_tuned", 10)["request_count_kind"] == "measured"
+    assert cell(s, "netcdf_tuned", 10)["request_count_kind"] == "client-ranges"
+    assert cell(s, "netcdf_user_stack", 10)["request_count_kind"] == "http-calls"
 
 
 def test_cells_record_access_transport(results_small):

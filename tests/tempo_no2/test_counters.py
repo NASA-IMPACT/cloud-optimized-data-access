@@ -23,6 +23,7 @@ def test_trace_counts_from_memory_store():
     assert c["request_count"] == 2
     assert c["bytes_requested"] == 1024
     assert c["requests_by_method"]["head"] == 1
+    assert c["kind"] == "client-ranges"  # Python calls into obstore, one per byte range; not HTTP requests
 
 
 def test_s3fs_counter_counts_bytes_for_gets_only_and_retries_from_metadata():
@@ -50,6 +51,7 @@ def test_s3fs_counter_counts_bytes_for_gets_only_and_retries_from_metadata():
     assert counts["bytes_requested"] == 10  # a HEAD's ContentLength is the object size, not bytes moved
     assert counts["retries"] == 2
     assert counts["requests_by_method"] == {"GetObject": 1, "HeadObject": 1}
+    assert counts["kind"] == "http-calls"  # one botocore after-call per completed S3 operation
 
 
 def test_retry_log_counter_counts_retry_lines():

@@ -113,7 +113,7 @@ def summarize(df: pd.DataFrame) -> dict[str, Any]:
                 **{p: _nan_to_none(g[f"{p}_seconds"].astype(float).median()) for p in PHASES if p != "catalog"},
             },
             "request_count": _nan_to_none(g["request_count"].astype(float).median()),
-            "request_count_kind": "static-minimum" if g["request_count_reason"].fillna("").str.startswith("static").any() else "measured",
+            "request_count_kind": _count_kind(g["request_count_reason"]),
             "bytes_requested": _nan_to_none(g["bytes_requested"].astype(float).median()),
             "net_rx_bytes": _nan_to_none(rx),
             "retries": _nan_to_none(g["retries"].astype(float).sum()) if g["retries"].notna().any() else None,
@@ -184,6 +184,17 @@ def _speedup_row(merged: pd.DataFrame, workload: str, size: int, window: str, ba
         "session_spread": spread,
         "detectable": abs(math.log(median)) > math.log(1 + spread / median) if median > 0 else False,
     }
+
+
+def _count_kind(reasons: pd.Series) -> str:
+    """static-minimum (chunk grid), http-calls (botocore), or client-ranges (obspec tracer:
+    Python calls into obstore, not HTTP requests; see developmentseed/obstore#105)."""
+    r = reasons.fillna("")
+    if r.str.startswith("static").any():
+        return "static-minimum"
+    if (r == "http-calls").any():
+        return "http-calls"
+    return "client-ranges"
 
 
 def _nan_to_none(x: Any) -> float | None:

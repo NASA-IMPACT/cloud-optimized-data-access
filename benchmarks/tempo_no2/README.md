@@ -85,10 +85,23 @@ records:
   `retrieval_seconds`, `processing_seconds`, `end_to_end_seconds`;
 - resources: CPU user and system seconds and peak RSS from `getrusage` in
   the trial process; load average and CPU steal around the trial;
-- transport: `request_count` and `bytes_requested` (obspec-utils tracer
-  for the tuned and ManifestStore arms, one entry per byte range; a
-  botocore `after-call` hook for the user stack, counting bytes for
-  GetObject only; the static minimum for Icechunk), `requests_by_method`,
+- transport: `request_count` and `bytes_requested`, with
+  `request_count_reason` saying what was counted. Three kinds, kept apart
+  in the summary as `request_count_kind`:
+  - `client-ranges` (tuned and ManifestStore arms): obspec-utils' tracer
+    records Python calls into obstore, one per byte range. obstore's Rust
+    side can coalesce adjacent ranges into fewer HTTP requests, split
+    large ones, and retry, none of which the tracer sees
+    (developmentseed/obstore#105 tracks exposing real request metrics).
+    So this is a count of ranges asked for, not of HTTP requests, and the
+    floor model that uses it is approximate for these arms.
+  - `http-calls` (user stack): a botocore `after-call` hook, one per
+    completed S3 operation, with retries from the response metadata; bytes
+    counted for GetObject only.
+  - `static-minimum` (Icechunk): computed from the store's chunk grid.
+  Bytes on the wire are measured independently of all three as
+  `net_rx_bytes` on a dedicated host. CPU time covers every thread, Rust
+  included, because it comes from `getrusage`. `requests_by_method`,
   `retries` (botocore `ResponseMetadata.RetryAttempts` for the user stack;
   null with a reason for the Rust clients, which do not surface retries to
   Python), and `net_rx_bytes` on a dedicated host, minus the session's

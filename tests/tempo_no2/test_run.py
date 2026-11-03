@@ -102,3 +102,14 @@ def test_uninstrumented_file_arm_reports_null_count_with_reason(cases):
 
     row = run_trial(lambda: Https(), Case("point", 10, "1d"), [0], cases, 0, "cold", arm="netcdf_user_stack")
     assert row.status == "ok" and row.request_count is None and "not instrumented" in row.request_count_reason
+
+
+def test_run_trial_records_the_count_kind_from_the_backend(cases):
+    class Counted(FakeBackend):
+        name = "netcdf_tuned"
+
+        def counts(self):
+            return {"request_count": 7, "bytes_requested": 10, "requests_by_method": {}, "kind": "client-ranges"}
+
+    row = run_trial(lambda: Counted(), Case("point", 10, "1d"), [0], cases, 0, "cold", arm="netcdf_tuned")
+    assert row.request_count == 7 and row.request_count_reason == "client-ranges"

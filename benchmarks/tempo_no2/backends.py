@@ -24,7 +24,7 @@ from obspec_utils.readers import BlockStoreReader
 from obspec_utils.registry import ObjectStoreRegistry
 
 from benchmarks.tempo_no2.cases import CONFIG
-from benchmarks.tempo_no2.counters import RequestTrace, S3fsCounter, probe_paging, trace_counts, traced_store
+from benchmarks.tempo_no2.counters import CLIENT_RANGES, RequestTrace, S3fsCounter, probe_paging, trace_counts, traced_store
 from benchmarks.tempo_no2.measure import METADATA_OBJECTS, static_minimum_requests
 
 NO2_PATH = "product/vertical_column_troposphere"
@@ -293,7 +293,7 @@ class NetcdfTuned:
         self.store_spec = store_spec
         self.block_size, self.max_workers, self.page_buf_size = block_size, max_workers, page_buf_size
         self._paths = [self._path(url) for url in self.urls]
-        self._counts: dict[str, Any] = {"request_count": 0, "bytes_requested": 0, "requests_by_method": {}}
+        self._counts: dict[str, Any] = {"request_count": 0, "bytes_requested": 0, "requests_by_method": {}, "kind": CLIENT_RANGES}
         store, trace = traced_store(build_store(store_spec))
         with BlockStoreReader(store, self._paths[0], block_size=block_size) as reader, h5py.File(reader, "r") as handle:
             self.paged = probe_paging(handle)
@@ -459,7 +459,7 @@ class VirtualManifestStore(_VirtualSelection):
         super().__init__(xr.open_zarr(manifest_store, consolidated=False, chunks=None, zarr_format=3), manifest)
 
     def counts(self) -> dict[str, Any] | None:
-        total: dict[str, Any] = {"request_count": 0, "bytes_requested": 0, "requests_by_method": {}}
+        total: dict[str, Any] = {"request_count": 0, "bytes_requested": 0, "requests_by_method": {}, "kind": CLIENT_RANGES}
         for trace in self._traces:
             c = trace_counts(trace)
             total["request_count"] += c["request_count"]

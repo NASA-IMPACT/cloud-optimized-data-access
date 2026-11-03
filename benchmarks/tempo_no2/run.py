@@ -204,6 +204,7 @@ def run_trial(
         else:
             row.request_count, row.bytes_requested = counts["request_count"], counts["bytes_requested"]
             row.requests_by_method = counts.get("requests_by_method", {})
+            row.request_count_reason = counts.get("kind", "client-ranges")
             if "retries" in counts:
                 row.retries = counts["retries"]
         if row.retries is None:
