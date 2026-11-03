@@ -8,6 +8,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       python:
         patterns: ["*"]
@@ -18,6 +20,8 @@ updates:
     directory: /decks/coda-presentation
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       deck:
         patterns: ["*"]
@@ -28,4 +32,6 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     labels: [dependencies, ci]
