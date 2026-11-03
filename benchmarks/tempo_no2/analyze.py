@@ -272,39 +272,46 @@ def figures(summary: dict[str, Any], out_dir: Path) -> list[Path]:
     ax.tick_params(axis="x", labelsize=7)
     fig.tight_layout()
     paths.append(_save(fig, out_dir / "speedup.svg"))
-    for name, size, bars in SCAN_FIGURES:
-        path = scan_figure(summary, out_dir, name, size, bars)
+    for name, workload, size, bars in PHASE_FIGURES:
+        path = phase_figure(summary, out_dir, name, workload, size, bars)
         if path:
             paths.append(path)
     return paths
 
 
-# Whole-scan figures for the deck: (file name, granules, bars as (label, arm, arm_variant) top to bottom).
-SCAN_FIGURES = (
-    ("scan_1.svg", 1, (
+# Deck figures: (file name, workload, case size, bars as (label, arm, arm_variant) top to bottom).
+PHASE_FIGURES = (
+    ("scan_1.svg", "scan", 1, (
         ("Default stack", "netcdf_user_stack", {}),
         ("Tuned h5py", "netcdf_tuned", {"max_workers": 1}),
         ("Virtual Zarr", "virtual_icechunk", {}),
         ("Download + h5py", "netcdf_download", {}),
     )),
-    ("scan_15.svg", 15, (
+    ("scan_15.svg", "scan", 15, (
         ("Tuned h5py, 1 process", "netcdf_tuned", {"max_workers": 1}),
         ("Tuned h5py, 8 processes", "netcdf_tuned", {}),
         ("Virtual Zarr", "virtual_icechunk", {}),
         ("Download + h5py", "netcdf_download", {}),
     )),
+    ("aoi_100.svg", "aoi", 100, (
+        ("Tuned h5py, 1 process", "netcdf_tuned", {"max_workers": 1}),
+        ("Tuned h5py, 8 processes", "netcdf_tuned", {}),
+        ("Virtual Zarr", "virtual_icechunk", {}),
+    )),
 )
+# One colour per kind of library on every deck figure (validated as a pair); the phase is a texture.
+VIRTUAL_COLOR, OTHER_COLOR = "#952f7c", "#5b8fd0"
 
 
-def scan_figure(summary: dict[str, Any], out_dir: Path, name: str, size: int, bars: tuple) -> Path | None:
-    """End to end for a whole scan of `size` granules, one bar per library, split into setup + open
-    and read + decode. Bars the run lacks are left out; None when fewer than two remain."""
+def phase_figure(summary: dict[str, Any], out_dir: Path, name: str, workload: str, size: int, bars: tuple) -> Path | None:
+    """End to end for one one-day case, one bar per library, split into setup + open (hatched) and
+    read + decode. Bars the run lacks are left out; None when fewer than two remain."""
     import matplotlib.pyplot as plt
 
     cells = {}
     for label, arm, variant in bars:
         match = [c for c in summary["cells"] if c["arm"] == arm and c["arm_variant"] == variant
-                 and (c["workload"], c["case_size"], c["window"]) == ("scan", size, "1d")]
+                 and (c["workload"], c["case_size"], c["window"]) == (workload, size, "1d")]
         if match:
             cells[label] = match[0]
     if len(cells) < 2:
@@ -315,25 +322,33 @@ def scan_figure(summary: dict[str, Any], out_dir: Path, name: str, size: int, ba
     # svg.fonttype none: text stays text, so the deck renders it in Inter
     style = {"font.family": ["Inter", "DejaVu Sans", "sans-serif"], "font.size": 13, "svg.fonttype": "none"}
     with plt.rc_context(style):
-        return _draw_scan(cells, size, out_dir / name)
+        return _draw_phases(cells, _case_caption(workload, size), out_dir / name)
 
 
-def _draw_scan(cells: dict[str, dict[str, Any]], size: int, path: Path) -> Path:
+def _case_caption(workload: str, size: int) -> str:
+    if workload == "scan":
+        return "whole scan of one granule" if size == 1 else f"whole scan of {size} granules"
+    return f"{size} km box over one day" if workload == "aoi" else f"{size} points over one day"
+
+
+def _draw_phases(cells: dict[str, dict[str, Any]], caption: str, path: Path) -> Path:
     import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch
 
-    setup_c, read_c, ink, muted = "#d97e6a", "#952f7c", "#3f3f48", "#6b6b76"  # deck palette; validated as a pair
+    ink, muted = "#3f3f48", "#6b6b76"
     fig, ax = plt.subplots(figsize=(11, 0.75 * len(cells) + 1.2))
     labels = list(cells)[::-1]
     opens = np.array([cells[label]["phases"]["open"] or 0.0 for label in labels])
     reads = np.array([(cells[label]["phases"]["retrieval"] or 0.0) + (cells[label]["phases"]["processing"] or 0.0) for label in labels])
+    colors = [VIRTUAL_COLOR if cells[label]["arm"].startswith("virtual") else OTHER_COLOR for label in labels]
     gap = 0.04 * max(opens + reads) / 30  # a thin surface gap between the two segments
-    ax.barh(labels, opens - gap, color=setup_c, height=0.62, label="Setup + open")
-    ax.barh(labels, reads, left=opens, color=read_c, height=0.62, label="Read + decode")
+    with plt.rc_context({"hatch.color": "white", "hatch.linewidth": 1.5}):
+        ax.barh(labels, opens - gap, color=colors, height=0.62, hatch="//", linewidth=0)
+    ax.barh(labels, reads, left=opens, color=colors, height=0.62, linewidth=0)
     top = max(c["median_s"] for c in cells.values())
     for y, label in enumerate(labels):
         ax.text(cells[label]["median_s"] + top * 0.012, y, f"{cells[label]['median_s']:.1f} s", va="center", color=ink)
-    granules = "one granule" if size == 1 else f"{size} granules"
-    ax.set_xlabel(f"seconds, whole scan of {granules} (median of cold runs)", color=muted)
+    ax.set_xlabel(f"seconds, {caption} (median of cold runs)", color=muted)
     ax.set_xlim(0, top * 1.12)
     for side in ("top", "right", "left"):
         ax.spines[side].set_visible(False)
@@ -341,7 +356,12 @@ def _draw_scan(cells: dict[str, dict[str, Any]], size: int, path: Path) -> Path:
     ax.tick_params(axis="y", length=0, colors=ink)
     ax.tick_params(axis="x", colors=muted)
     # above the plot: the longest bar runs into any corner inside it
-    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.0), ncol=2, frameon=False, labelcolor=ink)
+    with plt.rc_context({"hatch.color": "white", "hatch.linewidth": 1.5}):
+        handles = [
+            Patch(facecolor=VIRTUAL_COLOR, label="Virtual Zarr"), Patch(facecolor=OTHER_COLOR, label="Other libraries"),
+            Patch(facecolor=muted, hatch="//", linewidth=0, label="Setup + open"), Patch(facecolor=muted, label="Read + decode"),
+        ]
+        ax.legend(handles=handles, loc="lower left", bbox_to_anchor=(0, 1.0), ncol=4, frameon=False, labelcolor=ink)
     fig.tight_layout()
     return _save(fig, path)
 

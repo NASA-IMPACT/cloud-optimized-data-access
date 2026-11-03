@@ -79,7 +79,8 @@ def test_publish_writes_deck_copy_and_pointer(tmp_path, results_small_dir):
     pointer = json.loads((results_small_dir.parent / "latest.json").read_text())
     assert copy["run_id"] == pointer["run_id"] == "small"
     names = {p.name for p in (deck / "public" / "figures").iterdir()}
-    assert names == {f"{n}.{ext}" for n in ("phases", "requests", "floor_ratio", "speedup") for ext in ("svg", "png")}
+    # the fixture has tuned and virtual cells for the 100 km box, so the deck's aoi_100 figure is drawn too
+    assert names == {f"{n}.{ext}" for n in ("phases", "requests", "floor_ratio", "speedup", "aoi_100") for ext in ("svg", "png")}
     assert (results_small_dir / "summary.json").exists()
 
 
@@ -139,13 +140,14 @@ def _one_granule_cells():
 
 
 def test_scan_figures_skip_missing_bars(tmp_path):
-    from benchmarks.tempo_no2.analyze import SCAN_FIGURES, scan_figure
+    from benchmarks.tempo_no2.analyze import PHASE_FIGURES, VIRTUAL_COLOR, phase_figure
 
-    name, size, bars = SCAN_FIGURES[0]
+    name, workload, size, bars = PHASE_FIGURES[0]
     cells = _one_granule_cells()
-    assert scan_figure({"cells": cells}, tmp_path, name, size, bars).name == "scan_1.svg"
-    assert "Default stack" in (tmp_path / "scan_1.svg").read_text()
-    assert scan_figure({"cells": cells[:1]}, tmp_path, name, size, bars) is None  # one bar is not a comparison
+    assert phase_figure({"cells": cells}, tmp_path, name, workload, size, bars).name == "scan_1.svg"
+    svg = (tmp_path / "scan_1.svg").read_text()
+    assert "Default stack" in svg and VIRTUAL_COLOR in svg
+    assert phase_figure({"cells": cells[:1]}, tmp_path, name, workload, size, bars) is None  # one bar is not a comparison
 
 
 def test_cells_carry_the_retrieval_split_median():
