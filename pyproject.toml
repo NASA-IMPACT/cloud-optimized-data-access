@@ -33,3 +33,6 @@ testpaths = ["tests"]
 
 [tool.uv]
 package = false
+# certifi carries CA-bundle CVE fixes; let it past any exclude-newer cutoff
+# (global --exclude-newer / UV_EXCLUDE_NEWER still applies to everything else).
+exclude-newer-package = { certifi = "2027-01-01" }
