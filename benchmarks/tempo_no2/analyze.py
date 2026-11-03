@@ -300,7 +300,7 @@ PHASE_FIGURES = (
     )),
 )
 # One colour per kind of library on every deck figure (validated as a pair); the phase is a texture.
-VIRTUAL_COLOR, OTHER_COLOR = "#952f7c", "#5b8fd0"
+VIRTUAL_COLOR, OTHER_COLOR = "#952f7c", "#d97e6a"
 
 
 def phase_figure(summary: dict[str, Any], out_dir: Path, name: str, workload: str, size: int, bars: tuple) -> Path | None:
