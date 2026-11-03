@@ -108,7 +108,7 @@ def summarize(df: pd.DataFrame) -> dict[str, Any]:
             "arm_variant": json.loads(settings_key) if settings_key else {},
             "arm_settings": next((v for v in g["arm_settings"] if v), {}),
             "workload": workload, "case_size": int(size), "window": window, "cache_state": "cold", "access": access,
-            "n": int(len(g)),
+            "n": len(g),
             "median_s": float(e2e.median()), "p90_s": float(e2e.quantile(0.9)),
             "min_s": float(e2e.min()), "max_s": float(e2e.max()),
             "cov": float(e2e.std(ddof=1) / e2e.mean()) if len(g) > 1 else 0.0,
@@ -184,7 +184,7 @@ def _speedup_row(merged: pd.DataFrame, workload: str, size: int, window: str, ba
         "speedup_median": median,
         "ci_low": float(math.exp(lo)) if not math.isnan(lo) else None,
         "ci_high": float(math.exp(hi)) if not math.isnan(hi) else None,
-        "n": int(len(merged)),
+        "n": len(merged),
         "session_spread": spread,
         "detectable": abs(math.log(median)) > math.log(1 + spread / median) if median > 0 else False,
     }

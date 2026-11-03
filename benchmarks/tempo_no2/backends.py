@@ -24,7 +24,14 @@ from obspec_utils.readers import BlockStoreReader
 from obspec_utils.registry import ObjectStoreRegistry
 
 from benchmarks.tempo_no2.cases import CONFIG
-from benchmarks.tempo_no2.counters import CLIENT_RANGES, RequestTrace, S3fsCounter, probe_paging, trace_counts, traced_store
+from benchmarks.tempo_no2.counters import (
+    CLIENT_RANGES,
+    RequestTrace,
+    S3fsCounter,
+    probe_paging,
+    trace_counts,
+    traced_store,
+)
 from benchmarks.tempo_no2.measure import METADATA_OBJECTS, static_minimum_requests
 
 NO2_PATH = "product/vertical_column_troposphere"
@@ -357,7 +364,7 @@ class NetcdfTuned:
     def __del__(self) -> None:
         try:
             self.close()
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 -- __del__ may run at interpreter shutdown; nothing to report to
             pass
 
     def _run(self, observations: list[int], kind: str, lat: Any, lon: Any) -> SelectionResult:

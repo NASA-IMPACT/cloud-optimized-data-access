@@ -35,7 +35,7 @@ def trace_counts(trace: RequestTrace) -> dict[str, Any]:
         return {"request_count": 0, "bytes_requested": 0, "requests_by_method": {}, "kind": CLIENT_RANGES}
     by_method = df["method"].value_counts().to_dict()
     return {
-        "request_count": int(len(df)),
+        "request_count": len(df),
         "bytes_requested": int(df["length"].sum()),
         "requests_by_method": {str(k): int(v) for k, v in by_method.items()},
         "kind": CLIENT_RANGES,

@@ -1,7 +1,6 @@
 import h5py
 import numpy as np
 import pytest
-from obspec_utils.registry import ObjectStoreRegistry
 from obstore.store import LocalStore
 
 from benchmarks.tempo_no2.backends import (
@@ -12,7 +11,12 @@ from benchmarks.tempo_no2.backends import (
     resolve_pin,
 )
 from benchmarks.tempo_no2.cases import CONFIG, prepare_spatial_cases
-from tests.tempo_no2.fixtures import NO2_FILL, make_granules, make_virtual_store, manifest_for
+from tests.tempo_no2.fixtures import (
+    NO2_FILL,
+    make_granules,
+    make_virtual_store,
+    manifest_for,
+)
 
 WINDOW = {1: (slice(0, 20), slice(0, 40))}
 
@@ -167,8 +171,9 @@ def test_https_url_maps_s3_keys_to_the_distribution_endpoint():
 def test_container_stores_builds_http_stores_for_https_containers():
     import types
 
-    from benchmarks.tempo_no2.backends import container_stores
     from obstore.store import HTTPStore
+
+    from benchmarks.tempo_no2.backends import container_stores
 
     container = types.SimpleNamespace(name="asdc", url_prefix="https://data.asdc.earthdata.nasa.gov/asdc-prod-protected/", store=None)
     repo = types.SimpleNamespace(config=types.SimpleNamespace(virtual_chunk_containers={"asdc": container}))

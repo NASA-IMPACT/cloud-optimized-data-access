@@ -22,7 +22,13 @@ from pathlib import Path
 from typing import Any
 
 from benchmarks.tempo_no2.cases import Case, matrix
-from benchmarks.tempo_no2.measure import GRID_SHAPE, VARIABLES, TrialRow, cost_usd, static_minimum_requests
+from benchmarks.tempo_no2.measure import (
+    GRID_SHAPE,
+    VARIABLES,
+    TrialRow,
+    cost_usd,
+    static_minimum_requests,
+)
 from benchmarks.tempo_no2.run import DEFAULT_ARMS, DEFAULT_INSTANCE_RATE, parse_arms
 
 ARMS = ("netcdf_user_stack", "netcdf_tuned", "virtual_icechunk")
@@ -236,19 +242,19 @@ def run_matrix(
             row: TrialRow | None = None
             reason, stderr_tail = None, ""
             try:
-                proc = subprocess.run(command(spec), capture_output=True, text=True, timeout=timeout_s)
+                proc = subprocess.run(command(spec), capture_output=True, text=True, timeout=timeout_s, check=False)
                 stderr_tail = proc.stderr[-2000:]
                 last = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
                 try:
                     row = TrialRow.from_json(last)
-                except Exception:  # not JSON, or JSON that is not an object
+                except Exception:  # noqa: BLE001 -- not JSON, or JSON that is not an object
                     reason = f"exit {proc.returncode}, unparseable output" if proc.returncode else "unparseable output"
                 if row is not None and proc.returncode and row.status == "ok":
                     row.status = f"subprocess:exit {proc.returncode}"
             except subprocess.TimeoutExpired as error:
                 reason = f"timeout after {timeout_s:.0f} s"
                 stderr_tail = (error.stderr or b"")[-2000:].decode(errors="replace") if isinstance(error.stderr, bytes) else str(error.stderr or "")[-2000:]
-            except Exception as error:  # e.g. OSError spawning the interpreter
+            except Exception as error:  # noqa: BLE001 -- e.g. OSError spawning the interpreter
                 reason = f"{type(error).__name__}: {error}"
             finally:
                 sampler.stop()

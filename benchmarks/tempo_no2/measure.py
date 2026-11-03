@@ -152,7 +152,7 @@ def static_minimum_requests(
     else:
         lat_a, lon_a = np.asarray(lat).ravel(), np.asarray(lon).ravel()
         per_step = len({(int(a) // chunks[1], int(b) // chunks[2]) for a, b in zip(lat_a, lon_a, strict=True)})
-    count = per_step * len(set(int(t) for t in time_indices))
+    count = per_step * len({int(t) for t in time_indices})
     return count, count * chunks[0] * chunks[1] * chunks[2] * itemsize
 
 
@@ -238,7 +238,7 @@ def _imds(path: str, timeout: float = 0.5) -> str | None:
             headers={"X-aws-ec2-metadata-token": token},
         )
         return urllib.request.urlopen(req, timeout=timeout).read().decode()
-    except Exception:
+    except Exception:  # noqa: BLE001 -- off EC2 or IMDS disabled; the host field is just null
         return None
 
 

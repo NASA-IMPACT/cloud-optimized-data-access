@@ -4,7 +4,11 @@ import pytest
 
 from benchmarks.tempo_no2.backends import SelectionResult
 from benchmarks.tempo_no2.cases import Case
-from benchmarks.tempo_no2.gate import gate_observation, gate_passed, observations_for_gate
+from benchmarks.tempo_no2.gate import (
+    gate_observation,
+    gate_passed,
+    observations_for_gate,
+)
 
 T = np.array(["2025-03-14T12:00"], dtype="datetime64[ns]")
 

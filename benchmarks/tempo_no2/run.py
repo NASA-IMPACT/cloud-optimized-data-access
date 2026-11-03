@@ -25,7 +25,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from benchmarks.tempo_no2 import backends, cases as cases_mod
+from benchmarks.tempo_no2 import backends
+from benchmarks.tempo_no2 import cases as cases_mod
 from benchmarks.tempo_no2.backends import Backend, CredentialCache, SelectionResult
 from benchmarks.tempo_no2.cases import CONFIG, Case, SpatialCases
 from benchmarks.tempo_no2.counters import RetryLogCounter
@@ -100,7 +101,7 @@ def check_expected(path: Path, counts: dict[tuple[str, str], int]) -> list[tuple
 def provenance() -> dict[str, Any]:
     try:
         sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO_ROOT, capture_output=True, text=True, check=True).stdout.strip()
-    except Exception:
+    except (subprocess.CalledProcessError, OSError):
         sha = None
     lock = REPO_ROOT / "uv.lock"
     packages = {}
@@ -118,7 +119,7 @@ def provenance() -> dict[str, Any]:
 
 class _Noop:
     name = "noop"
-    settings: dict[str, Any] = {}
+    settings: dict[str, Any] = {}  # noqa: RUF012 -- never mutated; the Backend protocol declares an instance attribute
 
     def point(self, observations: list[int], point_rows: pd.DataFrame) -> SelectionResult:
         return SelectionResult(np.array([], dtype="datetime64[ns]"), np.zeros((0, 0)), np.zeros((0, 0)))
@@ -245,7 +246,7 @@ def run_trial(
             )
         row.cost_usd_estimate = cost_usd(row.request_count or 0, row.end_to_end_seconds, instance_rate_usd_h)
         row.status = "ok"
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001 -- a failed trial is a row with its error, not a crashed matrix
         row.end_to_end_seconds = time.perf_counter() - total_start
         row.status = f"{type(error).__name__}: {error}"
         row.error = row.status[:2000]

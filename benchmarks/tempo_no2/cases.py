@@ -158,7 +158,7 @@ def grid_spec(latitudes: np.ndarray, longitudes: np.ndarray) -> dict[str, dict[s
         worst = float(np.abs(rebuilt - values).max())
         if worst > GRID_TOLERANCE_DEG:
             raise ValueError(f"{name} axis is not regular: max deviation {worst:.2e} deg")
-        spec[name] = {"first": float(values[0]), "last": float(values[-1]), "size": int(len(values))}
+        spec[name] = {"first": float(values[0]), "last": float(values[-1]), "size": len(values)}
     return spec
 
 

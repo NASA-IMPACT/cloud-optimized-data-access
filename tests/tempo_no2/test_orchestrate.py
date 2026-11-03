@@ -3,7 +3,13 @@ import time
 from pathlib import Path
 
 from benchmarks.tempo_no2.measure import TrialRow
-from benchmarks.tempo_no2.orchestrate import HostSampler, estimate, main, plan, run_matrix
+from benchmarks.tempo_no2.orchestrate import (
+    HostSampler,
+    estimate,
+    main,
+    plan,
+    run_matrix,
+)
 
 SMOKE = Path(__file__).parent.parent / "fixtures" / "smoke-results.jsonl"
 ALL_TIMED = ("netcdf_user_stack", "netcdf_tuned", "virtual_icechunk")
@@ -25,8 +31,8 @@ def test_plan_headline_counts():
 
 
 def test_default_command_maps_catalog_to_its_subcommand():
-    from benchmarks.tempo_no2.orchestrate import TrialSpec, default_command
     from benchmarks.tempo_no2.cases import Case
+    from benchmarks.tempo_no2.orchestrate import TrialSpec, default_command
 
     cmd = default_command(TrialSpec("catalog", Case("point", 1, "1d"), 2, "cold"), "r", "1")
     assert "catalog" in cmd and "--rep" in cmd and "1" == cmd[cmd.index("--rep") + 1] and "--window" in cmd

@@ -2,7 +2,6 @@ import json
 import shutil
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 from benchmarks.tempo_no2.analyze import load, publish, summarize

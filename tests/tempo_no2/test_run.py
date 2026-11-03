@@ -22,7 +22,7 @@ def cases():
 
 class FakeBackend:
     name = "virtual_icechunk"
-    settings = {}
+    settings = {}  # noqa: RUF012 -- mirrors the Backend protocol's instance attribute
     calls = 0
 
     def _result(self, n_obs, shape):
