@@ -283,6 +283,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--timeout-s", type=float, default=1800)
     p.add_argument("--access", choices=("s3", "https"), default="s3", help="s3: in us-west-2; https: from anywhere via the distribution endpoint")
     p.add_argument("--arms", type=parse_arms, default=DEFAULT_ARMS, help="comma-separated timed arms (default netcdf_tuned,virtual_icechunk; add netcdf_user_stack to include the user stack)")
+    p.add_argument("--limit", type=int, default=None, help="run only the first N planned trials (a quick end-to-end check)")
     args = p.parse_args(argv)
 
     specs = plan(args.headline_only, arms=args.arms)
@@ -312,6 +313,9 @@ def main(argv: list[str] | None = None) -> int:
         if not args.estimate:
             print("re-run with --yes to start")
         return 0 if args.estimate else 2
+    if args.limit:
+        print(f"limit: running {min(args.limit, len(specs))} of {len(specs)} planned trials")
+        specs = specs[: args.limit]
     out_dir = Path(args.out_root) / args.run_id
     probes = args.probes if args.probes and Path(args.probes).exists() else None
     if probes is None:

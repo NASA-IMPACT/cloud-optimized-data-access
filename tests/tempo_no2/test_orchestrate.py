@@ -111,3 +111,19 @@ def test_main_accepts_an_arms_list(tmp_path, capsys, monkeypatch):
     monkeypatch.chdir(tmp_path)
     rc = main(["--run-id", "r", "--headline-only", "--smoke-results", str(SMOKE), "--arms", ",".join(ALL_TIMED), "--estimate"])
     assert rc == 0 and "trials: 255" in capsys.readouterr().out
+
+
+def test_main_limit_runs_only_the_first_trials(tmp_path, capsys, monkeypatch):
+    import benchmarks.tempo_no2.orchestrate as orch
+
+    monkeypatch.chdir(tmp_path)
+    seen = []
+
+    def fake_run_matrix(specs, run_id, session, out_dir, trial_command=None, timeout_s=0):
+        seen.extend(specs)
+        return 0
+
+    monkeypatch.setattr(orch, "run_matrix", fake_run_matrix)
+    rc = main(["--run-id", "r", "--headline-only", "--smoke-results", str(SMOKE), "--yes", "--limit", "10", "--out-root", str(tmp_path)])
+    assert rc == 0 and len(seen) == 10 and seen[0].arm == "noop"
+    assert "limit: running 10 of" in capsys.readouterr().out
