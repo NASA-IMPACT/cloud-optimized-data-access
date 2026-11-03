@@ -22,8 +22,9 @@ const plain = computed(() => (summary.value?.cells ?? []).filter(c =>
 const oneDay = computed(() => plain.value.filter(c => c.window === '1d'))
 const fixedCells = computed(() => plain.value.filter(c =>
   (c.workload === 'point' && c.case_size === 10) || (c.workload === 'aoi' && c.case_size === 100) || c.workload === 'scan'))
+// one line per headline cell and baseline, the whole-scan cell included
 const speedupLines = computed(() => (summary.value?.speedups ?? []).filter(s =>
-  ['netcdf_user_stack', 'netcdf_tuned'].includes(s.baseline_arm) && s.workload === 'point' && s.case_size === 10 && s.window === '1d'))
+  ['netcdf_user_stack', 'netcdf_tuned'].includes(s.baseline_arm) && s.window === '1d'))
 const requests = c => (c.request_count == null ? '—' : (c.request_count_kind === 'static-minimum' ? '≥ ' : '') + fmtInt(c.request_count))
 const kindLabel = { 'static-minimum': 'static minimum', 'http-calls': 'HTTP calls', 'client-ranges': 'client ranges' }
 const prov = computed(() => summary.value?.provenance ?? {})
@@ -55,8 +56,8 @@ const fmtInt = x => (x == null ? '—' : Math.round(x).toLocaleString())
         </tbody>
       </table>
       <p class="text-xs mt-1">"≥" is a static minimum from the store's chunk grid; its bytes are uncompressed chunk sizes, an upper bound (see wire bytes). "Client ranges" are Python calls into obstore, one per byte range; Rust may coalesce, split or retry them, so the HTTP request count can differ. "HTTP calls" are completed S3 operations.</p>
-      <p v-for="s in speedupLines" :key="s.baseline_arm" class="mt-2">
-        {{ s.baseline_arm }} → virtual_icechunk: <b>{{ fmt(s.speedup_median) }}×</b>
+      <p v-for="s in speedupLines" :key="s.baseline_arm + s.workload + s.case_size" class="mt-1 text-sm">
+        {{ s.workload }}/{{ s.case_size }} · {{ s.baseline_arm }} → virtual_icechunk: <b>{{ fmt(s.speedup_median) }}×</b>
         (95% CI {{ fmt(s.ci_low) }}–{{ fmt(s.ci_high) }}, n={{ s.n }}<span v-if="!s.detectable">; inside session spread, no detectable difference</span>)
       </p>
     </template>
