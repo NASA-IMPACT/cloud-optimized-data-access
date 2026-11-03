@@ -55,6 +55,16 @@ buffer is not applied and the row says so.
 The user-stack arm is deliberately untuned: it is the stack the earthaccess
 documentation and the study's own discussion thread describe users running.
 
+## Tuning factors
+
+`trial --settings '{...}'` (and the orchestrator's variant specs) change one
+factor at a time and record it in `arm_settings`:
+
+- tuned arm: `block_size`, `max_workers`, `page_buf_size`
+- Icechunk arm: `zarr_concurrency` (zarr-python's cap on outstanding chunk
+  requests, default 10), `icechunk_concurrency` (Icechunk's partial-value
+  and request concurrency), `icechunk_decodes` (concurrent manifest decodes)
+
 ## Assumptions
 
 - Region us-west-2. ASDC's temporary S3 credentials are rejected elsewhere.

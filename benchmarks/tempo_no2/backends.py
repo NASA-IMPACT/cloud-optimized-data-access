@@ -458,8 +458,15 @@ class _VirtualSelection:
 class VirtualIcechunk(_VirtualSelection):
     name = "virtual_icechunk"
 
-    def __init__(self, session_store: Any, manifest: pd.DataFrame) -> None:
-        self.settings: dict[str, Any] = {"client": "icechunk", "chunks": None}
+    def __init__(self, session_store: Any, manifest: pd.DataFrame, zarr_concurrency: int | None = None) -> None:
+        import zarr
+
+        if zarr_concurrency is not None:
+            # zarr-python's cap on outstanding chunk requests (default 10); a tuning factor, recorded per row
+            zarr.config.set({"async.concurrency": int(zarr_concurrency)})
+        self.settings: dict[str, Any] = {
+            "client": "icechunk", "chunks": None, "zarr_concurrency": zarr.config.get("async.concurrency"),
+        }
         super().__init__(xr.open_zarr(session_store, consolidated=False, chunks=None), manifest)
 
     def counts(self) -> dict[str, Any] | None:
@@ -505,12 +512,27 @@ class VirtualManifestStore(_VirtualSelection):
 # --- the store ------------------------------------------------------------------
 
 
-def open_mirror_repo(access: str = "s3") -> Any:
+def icechunk_config(repo: Any, settings: dict[str, Any] | None) -> Any:
+    """The repository's config with the benchmark's Icechunk tuning factors applied:
+    ``icechunk_concurrency`` (partial-value and request concurrency) and
+    ``icechunk_decodes`` (concurrent manifest decodes)."""
+    config = repo.config
+    settings = settings or {}
+    if "icechunk_concurrency" in settings:
+        config.get_partial_values_concurrency = int(settings["icechunk_concurrency"])
+        config.max_concurrent_requests = int(settings["icechunk_concurrency"])
+    if "icechunk_decodes" in settings:
+        config.max_concurrent_decodes = int(settings["icechunk_decodes"])
+    return config
+
+
+def open_mirror_repo(access: str = "s3", settings: dict[str, Any] | None = None) -> Any:
     """The public Source Cooperative mirror, with Earthdata credentials for virtual chunks.
 
     ``access="https"`` swaps the ``asdc`` container for NASA's distribution
     endpoint with a bearer token, as the TEMPO HTTPS quickstart does, so the
     store reads from anywhere; the mirror itself is anonymous either way.
+    ``settings`` may carry Icechunk tuning factors (see ``icechunk_config``).
     """
     import icechunk
 
@@ -518,12 +540,12 @@ def open_mirror_repo(access: str = "s3") -> Any:
         bucket=CONFIG.mirror_bucket, prefix=CONFIG.mirror_prefix, region=CONFIG.region, anonymous=True
     )
     repo = icechunk.Repository.open(storage)
+    config = icechunk_config(repo, settings)
     if access == "https":
         import earthaccess_auth
 
         token = earthaccess_auth.login().token["access_token"]
         prefix = f"{HTTPS_ENDPOINT}/{SOURCE_BUCKET}/"
-        config = repo.config
         config.set_virtual_chunk_container(
             icechunk.VirtualChunkContainer(prefix, icechunk.http_store(headers={"Authorization": f"Bearer {token}"}), name=ASDC_CONTAINER)
         )
@@ -533,7 +555,7 @@ def open_mirror_repo(access: str = "s3") -> Any:
         )
     from earthaccess_auth.adapters.icechunk import earthdata_containers_credentials
 
-    return repo.reopen(authorize_virtual_chunk_access=earthdata_containers_credentials(repo))
+    return repo.reopen(config=config, authorize_virtual_chunk_access=earthdata_containers_credentials(repo))
 
 
 def pinned_session(repo: Any, snapshot_id: str) -> Any:

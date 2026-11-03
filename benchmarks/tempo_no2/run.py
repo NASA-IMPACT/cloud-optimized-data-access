@@ -348,9 +348,14 @@ class ArmFactory:
         if arm == "netcdf_user_stack":
             return lambda: backends.NetcdfUserStack(urls, backends._earthaccess_filesystem(access))
         if arm == "netcdf_tuned":
-            return lambda: backends.NetcdfTuned(urls, self.store_spec(), **self.settings)
+            tuned_settings = {k: v for k, v in self.settings.items() if k in ("block_size", "max_workers", "page_buf_size")}
+            return lambda: backends.NetcdfTuned(urls, self.store_spec(), **tuned_settings)
         if arm == "virtual_icechunk":
-            return lambda: backends.VirtualIcechunk(backends.pinned_session(backends.open_mirror_repo(access), snapshot).store, self.manifest)
+            icechunk_settings = {k: v for k, v in self.settings.items() if k.startswith("icechunk_")}
+            zarr_settings = {k: v for k, v in self.settings.items() if k == "zarr_concurrency"}
+            return lambda: backends.VirtualIcechunk(
+                backends.pinned_session(backends.open_mirror_repo(access, icechunk_settings), snapshot).store, self.manifest, **zarr_settings
+            )
         if arm == "virtual_manifeststore":
 
             def manifeststore() -> Backend:

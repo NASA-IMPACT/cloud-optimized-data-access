@@ -167,3 +167,16 @@ def test_end_to_end_excludes_backend_teardown(cases):
 
     row = run_trial(lambda: SlowClose(), Case("point", 10, "1d"), [0], cases, 0, "cold", arm="netcdf_tuned")
     assert row.end_to_end_seconds < 0.25 and row.teardown_seconds >= 0.3
+
+
+def test_arm_factory_passes_settings_to_the_virtual_arm(monkeypatch):
+    from benchmarks.tempo_no2 import backends
+    from benchmarks.tempo_no2.run import ArmFactory
+
+    captured = {}
+    monkeypatch.setattr(backends, "open_mirror_repo", lambda access="s3", settings=None: captured.setdefault("settings", settings) or object())
+    monkeypatch.setattr(backends, "pinned_session", lambda repo, snapshot: type("S", (), {"store": None})())
+    monkeypatch.setattr(backends, "VirtualIcechunk", lambda store, manifest, **kw: captured.setdefault("kw", kw))
+    ArmFactory({"granules": [{"source_url": "s3://b/k.nc"}], "snapshot_id": "x"}, {"zarr_concurrency": 64, "icechunk_concurrency": 32}).factory("virtual_icechunk")()
+    assert captured["settings"] == {"icechunk_concurrency": 32}  # only the Icechunk keys reach the repository open
+    assert captured["kw"] == {"zarr_concurrency": 64}

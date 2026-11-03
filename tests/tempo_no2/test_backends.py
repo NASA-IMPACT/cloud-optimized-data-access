@@ -186,3 +186,21 @@ def test_tuned_arm_reuses_one_worker_pool(granules, cases):
     np.testing.assert_array_equal(first.no2, second.no2)
     t.close()
     assert t._pool is None
+
+
+def test_virtual_arm_records_and_applies_zarr_concurrency(virtual_repo, manifest):
+    import zarr
+
+    repo, snap, _ = virtual_repo
+    v = VirtualIcechunk(pinned_session(repo, snap).store, manifest, zarr_concurrency=4)
+    assert v.settings["zarr_concurrency"] == 4 and zarr.config.get("async.concurrency") == 4
+    VirtualIcechunk(pinned_session(repo, snap).store, manifest)  # default leaves the setting alone
+    assert zarr.config.get("async.concurrency") == 4
+
+
+def test_icechunk_config_overrides(virtual_repo):
+    from benchmarks.tempo_no2.backends import icechunk_config
+
+    repo, _, _ = virtual_repo
+    cfg = icechunk_config(repo, {"icechunk_concurrency": 32, "icechunk_decodes": 8})
+    assert cfg.get_partial_values_concurrency == 32 and cfg.max_concurrent_requests == 32 and cfg.max_concurrent_decodes == 8
