@@ -35,9 +35,7 @@ From a laptop, add `--access https`: the virtual chunks are read from
 NASA's distribution endpoint with your Earthdata token, and rows are
 labelled so they never mix with in-region numbers.
 
-Headline timing runs on one dedicated EC2 instance. After `analyze`,
-commit `results/tempo_no2/`, the manifests, `expected/requests.json`, and
-the deck's `public/results` and `public/figures`.
+Headline timing runs on one dedicated EC2 instance.
 
 The protocol, including assumptions and what would change the conclusion,
 is `benchmarks/tempo_no2/README.md`.
