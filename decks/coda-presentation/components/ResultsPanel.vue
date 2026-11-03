@@ -16,9 +16,9 @@ onMounted(async () => {
   }
 })
 
-// Headline cells only: default arm settings, and not the once-per-session checker arm.
+// Headline cells only: no orchestrator override (arm_variant), and not the once-per-session checker arm.
 const plain = computed(() => (summary.value?.cells ?? []).filter(c =>
-  c.cache_state === 'cold' && c.arm !== 'virtual_manifeststore' && Object.keys(c.arm_settings ?? {}).length === 0))
+  c.cache_state === 'cold' && c.arm !== 'virtual_manifeststore' && Object.keys(c.arm_variant ?? {}).length === 0))
 const oneDay = computed(() => plain.value.filter(c => c.window === '1d'))
 const fixedCells = computed(() => plain.value.filter(c =>
   (c.workload === 'point' && c.case_size === 10) || (c.workload === 'aoi' && c.case_size === 100)))

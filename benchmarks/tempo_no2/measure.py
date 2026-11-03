@@ -39,7 +39,8 @@ class TrialRow:
     run_id: str | None = None
     session_id: str | None = None
     arm: str | None = None
-    arm_settings: dict[str, Any] = field(default_factory=dict)
+    arm_settings: dict[str, Any] = field(default_factory=dict)  # the backend's full settings
+    arm_variant: dict[str, Any] = field(default_factory=dict)  # the orchestrator's override, e.g. {"max_workers": 1}
     workload: str | None = None
     case_size: int | None = None
     window: str | None = None

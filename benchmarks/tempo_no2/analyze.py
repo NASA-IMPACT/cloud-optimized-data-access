@@ -33,7 +33,8 @@ FIGURES = ("phases.svg", "requests.svg", "floor_ratio.svg", "speedup.svg")
 def load(run_dir: Path) -> pd.DataFrame:
     rows = [json.loads(line) for line in (Path(run_dir) / "results.jsonl").read_text().splitlines() if line.strip()]
     df = pd.DataFrame(rows, columns=list(FIELDS))
-    df["arm_settings"] = df["arm_settings"].apply(lambda s: s if isinstance(s, dict) else {})
+    for col in ("arm_settings", "arm_variant"):
+        df[col] = df[col].apply(lambda s: s if isinstance(s, dict) else {})
     return df
 
 
@@ -69,7 +70,7 @@ def _limiter(cpu_fraction: float, nproc: float, max_core: float | None, bandwidt
 
 def summarize(df: pd.DataFrame) -> dict[str, Any]:
     df = df.copy()
-    df["settings_key"] = df["arm_settings"].apply(_settings_key)
+    df["settings_key"] = df["arm_variant"].apply(_settings_key)
     df["access"] = df["access"].astype(object).where(df["access"].notna(), "s3") if "access" in df else "s3"
     ok = df[(df["status"] == "ok") & (df["repetition"].fillna(0) >= 0)]
     noop = ok[ok["arm"] == "noop"]
@@ -102,7 +103,8 @@ def summarize(df: pd.DataFrame) -> dict[str, Any]:
         max_core = g["cpu_busy_pct_max_core"].astype(float).median()
         cells.append({
             "arm": arm,
-            "arm_settings": json.loads(settings_key) if settings_key else {},
+            "arm_variant": json.loads(settings_key) if settings_key else {},
+            "arm_settings": next((v for v in g["arm_settings"] if v), {}),
             "workload": workload, "case_size": int(size), "window": window, "cache_state": "cold", "access": access,
             "n": int(len(g)),
             "median_s": float(e2e.median()), "p90_s": float(e2e.quantile(0.9)),
@@ -211,7 +213,7 @@ def figures(summary: dict[str, Any], out_dir: Path) -> list[Path]:
     import matplotlib.pyplot as plt
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    cells = [c for c in summary["cells"] if not c["arm_settings"]]
+    cells = [c for c in summary["cells"] if not c["arm_variant"]]
     one_day = [c for c in cells if c["window"] == "1d"]
     labels = [f"{c['workload']}/{c['case_size']} {c['arm']}" for c in one_day]
     paths = []

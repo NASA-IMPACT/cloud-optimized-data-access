@@ -23,7 +23,17 @@ def results_small_dir(tmp_path):
 
 
 def cell(s, arm, size, window="1d"):
-    return next(x for x in s["cells"] if x["arm"] == arm and x["case_size"] == size and x["window"] == window and not x.get("arm_settings"))
+    return next(x for x in s["cells"] if x["arm"] == arm and x["case_size"] == size and x["window"] == window and not x.get("arm_variant"))
+
+
+def test_backend_settings_do_not_make_a_cell_a_variant(results_small):
+    # every arm records its full settings; only an orchestrator override (arm_variant) makes a variant
+    s = summarize(results_small)
+    plain = [c for c in s["cells"] if not c["arm_variant"]]
+    assert {c["arm"] for c in plain} == {"netcdf_user_stack", "netcdf_tuned", "virtual_icechunk"}
+    assert all(c["arm_settings"] for c in plain if c["arm"] == "netcdf_tuned")
+    variants = [c for c in s["cells"] if c["arm_variant"]]
+    assert len(variants) == 1 and variants[0]["arm_variant"] == {"max_workers": 1}
 
 
 def test_summary_cells_and_speedups(results_small):

@@ -246,12 +246,12 @@ def run_matrix(
                 sampler.stop()
             if row is None:
                 row = TrialRow(arm=spec.arm, workload=spec.case.workload, case_size=spec.case.case_size, window=spec.case.window,
-                               repetition=spec.rep, cache_state=spec.cache_state, arm_settings=dict(spec.settings),
+                               repetition=spec.rep, cache_state=spec.cache_state, arm_variant=dict(spec.settings),
                                status=f"subprocess:{reason}", error=stderr_tail)
             row.run_id, row.session_id = run_id, session
             row.arm = row.arm or spec.arm
-            if not row.arm_settings:
-                row.arm_settings = dict(spec.settings)
+            if not row.arm_variant:
+                row.arm_variant = dict(spec.settings)
             if row.repetition is None:
                 row.repetition = spec.rep
             timeline = sampler.timeline()

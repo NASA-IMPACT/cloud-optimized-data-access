@@ -70,7 +70,7 @@ def test_orchestrate_keeps_failed_trial_as_row(tmp_path):
     assert all(r.status.startswith("subprocess:") for r in rows[:4])
     assert all((tmp_path / "timelines" / f"{i}.json").exists() for i in range(5))
     assert [r.arm for r in rows] == [s.arm for s in specs]
-    assert rows[4].status == "RuntimeError: no creds" and rows[4].arm_settings == dict(specs[4].settings)
+    assert rows[4].status == "RuntimeError: no creds" and rows[4].arm_variant == dict(specs[4].settings)
     assert rows[0].run_id == "r" and rows[0].session_id == "1"
 
 

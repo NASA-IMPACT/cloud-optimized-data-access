@@ -461,6 +461,7 @@ def cmd_trial(args: argparse.Namespace) -> int:
     warmed = prepare_backend(factory, args.case, observations, spatial, args.cache)
     row = run_trial(factory, args.case, observations, spatial, args.rep, args.cache, probes=probes, backend=warmed, arm=args.arm)
     row.access = args.access
+    row.arm_variant = json.loads(args.settings) if args.settings else {}
     _stamp(row, payload, args.run_id, args.session)
     print(row.to_json())
     return 0 if row.status == "ok" else 1
