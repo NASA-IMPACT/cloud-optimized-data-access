@@ -1,0 +1,581 @@
+{
+ "source": "EOSDIS FY2026 Annual Metrics Report v0 (EMS), earthdata.nasa.gov/about/data-metrics/annual-metrics-reports, FY2026 = 2025-10-01..2026-09-30",
+ "units": "gb = EMS gigabytes (1e9 bytes implied by 159.5e6 GB == 152.1 PB headline when converted as 1024^2)",
+ "summary": {
+  "Unique Data Sets": 18839,
+  "Distinct Users of EOSDIS Data and Services (Google Analytics)": "14.1 M",
+  "Web Site Sessions (Google Analytics)": "19.4  M",
+  "Average Archive Growth": "174 TB/day",
+  "Total Archive Volume Including in Cloud": "225.7 PB",
+  "Total Archive Volume in Cloud Only": "152.1 PB",
+  "Total Archive Volume - Duplicate (Cloud and On-prem)": "32.3 PB",
+  "End User Distribution Products including from Cloud": "16,096.3  M",
+  "End User Distribution Products from Cloud only": "13,458.6 M",
+  "End User Average Distribution Volume": "1443.5 TB/day",
+  "Total Number of Files Archived Including in Cloud": "5.8 B"
+ },
+ "archive_total_by_provider": {
+  "ASDC": {
+   "gb": 11462089.9,
+   "files": 324960526
+  },
+  "ASDCCLOUD": {
+   "gb": 3833254.91,
+   "files": 45424269
+  },
+  "ASF": {
+   "gb": 3374079.72,
+   "files": 15358817
+  },
+  "ASFCLOUD": {
+   "gb": 57845568.77,
+   "files": 140595363
+  },
+  "CDDIS": {
+   "gb": 180349.04,
+   "files": 554635655
+  },
+  "CSDA": {
+   "gb": 14962950.44,
+   "files": 33621834
+  },
+  "GESDISC": {
+   "gb": 8549198.75,
+   "files": 269636972
+  },
+  "GESDISCCLOUD": {
+   "gb": 6776430.46,
+   "files": 293901196
+  },
+  "GHRC": {
+   "gb": 44210.89,
+   "files": 9795424
+  },
+  "GHRCCLOUD": {
+   "gb": 479518.67,
+   "files": 27326681
+  },
+  "LAADS": {
+   "gb": 36100943.08,
+   "files": 2381934258
+  },
+  "LAADSCLOUD": {
+   "gb": 11771889.18,
+   "files": 158247164
+  },
+  "LPDAAC": {
+   "gb": 5377207.7,
+   "files": 519030159
+  },
+  "LPDAACCLOUD": {
+   "gb": 24778148.44,
+   "files": 479041945
+  },
+  "NSIDC": {
+   "gb": 4600995.949999999,
+   "files": 184318613
+  },
+  "NSIDCCLOUD": {
+   "gb": 5267587.01,
+   "files": 139051271
+  },
+  "OBDAAC": {
+   "gb": 6299394.9,
+   "files": 75597847
+  },
+  "OBDAACCLOUD": {
+   "gb": 3593262.06,
+   "files": 24709167
+  },
+  "ORNL": {
+   "gb": 165007.38,
+   "files": 3582896
+  },
+  "ORNLCLOUD": {
+   "gb": 898949.34,
+   "files": 4561817
+  },
+  "PODAAC": {
+   "gb": 1044282.64,
+   "files": 39284693
+  },
+  "PODAACCLOUD": {
+   "gb": 29275771.25,
+   "files": 109016219
+  },
+  "SEDAC": {
+   "gb": 16274.59,
+   "files": 916
+  }
+ },
+ "archive_growth_fy26_by_provider": {
+  "ASDC": {
+   "gb": 1478982.88,
+   "files": 51474534
+  },
+  "ASDCCLOUD": {
+   "gb": 2071031.85,
+   "files": 22998685
+  },
+  "ASF": {
+   "gb": 78297.16,
+   "files": 98319
+  },
+  "ASFCLOUD": {
+   "gb": 17379142.87,
+   "files": 20120007
+  },
+  "CDDIS": {
+   "gb": 37165.42,
+   "files": 55177796
+  },
+  "CSDA": {
+   "gb": 2245.11,
+   "files": 9050
+  },
+  "GESDISC": {
+   "gb": 1755839.34,
+   "files": 38149971
+  },
+  "GESDISCCLOUD": {
+   "gb": 6089267.85,
+   "files": 238161965
+  },
+  "GHRCCLOUD": {
+   "gb": 26605.54,
+   "files": 6098202
+  },
+  "LAADS": {
+   "gb": 11206906.91,
+   "files": 650624080
+  },
+  "LAADSCLOUD": {
+   "gb": 5170227.26,
+   "files": 85976134
+  },
+  "LPDAAC": {
+   "gb": 289302.73,
+   "files": 25189926
+  },
+  "LPDAACCLOUD": {
+   "gb": 7153772.43,
+   "files": 133138820
+  },
+  "NSIDC": {
+   "gb": 95165.36,
+   "files": 3770888
+  },
+  "NSIDCCLOUD": {
+   "gb": 1986139.32,
+   "files": 52885997
+  },
+  "OBDAACCLOUD": {
+   "gb": 1522636.67,
+   "files": 6512984
+  },
+  "ORNL": {
+   "gb": 1.36,
+   "files": 596
+  },
+  "ORNLCLOUD": {
+   "gb": 330411.59,
+   "files": 947476
+  },
+  "PODAACCLOUD": {
+   "gb": 8339082.46,
+   "files": 39459726
+  }
+ },
+ "distribution_gb_fy26_by_provider": {
+  "ASDCCLOUD": 10088609.345015964,
+  "ASF": 543561.9745576638,
+  "ASFCLOUD": 164490763.6536147,
+  "CDDIS": 639845.3056656834,
+  "CSDA": 6808.170497233974,
+  "GESDISC": 6424360.040163234,
+  "GESDISCCLOUD": 27811240.719078958,
+  "GESDISCCLOUDGIOVANNI": 816.7995996568335,
+  "GHRCCLOUD": 1390005.09118737,
+  "LAADSCLOUD": 38096827.611361094,
+  "LARCECS": 1262.751075017265,
+  "LARCSVC": 5531092.1723856125,
+  "LPDAAC": 72214.84674808834,
+  "LPDAACCLOUD": 82595608.61577195,
+  "MODAPS": 11266629.275713407,
+  "NSIDC": 61957.404593748026,
+  "NSIDCCLOUD": 132756108.71757494,
+  "NSIDCNRT": 287.302989862859,
+  "NSIDCV0": 35756.524201054075,
+  "OBDAAC": 280148.8980328104,
+  "OBDAACCLOUD": 6028154.27247909,
+  "ORNL": 76332.41445885209,
+  "ORNLCLOUD": 17558662.23952062,
+  "PODAACCLOUD": 30082300.031040106,
+  "SEDAC": 0.805990753695368,
+  "Total": 535839354.9833174
+ },
+ "distribution_products_fy26_by_provider": {
+  "ASDCCLOUD": 83357136,
+  "ASF": 13880665,
+  "ASFCLOUD": 2018485513,
+  "CDDIS": 1136635451,
+  "CSDA": 139009,
+  "GESDISC": 482038788,
+  "GESDISCCLOUD": 913872491,
+  "GESDISCCLOUDGIOVANNI": 844281,
+  "GHRCCLOUD": 61820841,
+  "LAADSCLOUD": 349183450,
+  "LARCECS": 36378,
+  "LARCSVC": 43660615,
+  "LPDAAC": 34694975,
+  "LPDAACCLOUD": 8411412982,
+  "MODAPS": 507192993,
+  "NSIDC": 4260477,
+  "NSIDCCLOUD": 1016203778,
+  "NSIDCNRT": 10840,
+  "NSIDCV0": 2829287,
+  "OBDAAC": 11695699,
+  "OBDAACCLOUD": 59704238,
+  "ORNL": 100511289,
+  "ORNLCLOUD": 17013467,
+  "PODAACCLOUD": 526600405,
+  "SEDAC": 250,
+  "Total": 15796085298
+ },
+ "stage3_by_daac": {
+  "total_archive": {
+   "ASDC": {
+    "tb": 14936.860166015626,
+    "files_m": 370.384795
+   },
+   "ASF DAAC": {
+    "tb": 59784.81297851563,
+    "files_m": 155.95418
+   },
+   "CDDIS": {
+    "tb": 176.122109375,
+    "files_m": 554.635655
+   },
+   "CSDA": {
+    "tb": 14612.2562890625,
+    "files_m": 33.621834
+   },
+   "GESDISC": {
+    "tb": 14966.434775390626,
+    "files_m": 563.538168
+   },
+   "GHRC DAAC": {
+    "tb": 511.4546484375,
+    "files_m": 37.122105
+   },
+   "LAADS DAAC": {
+    "tb": 46750.81275390625,
+    "files_m": 2540.181422
+   },
+   "LPDAAC": {
+    "tb": 29448.58998046875,
+    "files_m": 998.072104
+   },
+   "NSIDC DAAC": {
+    "tb": 9637.288046874999,
+    "files_m": 323.369884
+   },
+   "OB.DAAC": {
+    "tb": 9660.7978125,
+    "files_m": 100.307014
+   },
+   "ORNL DAAC": {
+    "tb": 1039.020234375,
+    "files_m": 8.144713
+   },
+   "PO.DAAC": {
+    "tb": 29609.427626953126,
+    "files_m": 148.300912
+   },
+   "SEDAC": {
+    "tb": 15.893154296875,
+    "files_m": 0.000916
+   }
+  },
+  "archive_growth": {
+   "ASDC": {
+    "tb": 3466.811259765625,
+    "files_m": 74.473219
+   },
+   "ASF DAAC": {
+    "tb": 17048.281279296876,
+    "files_m": 20.218326
+   },
+   "CDDIS": {
+    "tb": 36.29435546875,
+    "files_m": 55.177796
+   },
+   "CSDA": {
+    "tb": 2.192490234375,
+    "files_m": 0.00905
+   },
+   "GESDISC": {
+    "tb": 7661.2374902343745,
+    "files_m": 276.311936
+   },
+   "GHRC DAAC": {
+    "tb": 25.98197265625,
+    "files_m": 6.098202
+   },
+   "LAADS DAAC": {
+    "tb": 15993.295087890625,
+    "files_m": 736.600214
+   },
+   "LP DAAC": {
+    "tb": 7268.6280859375,
+    "files_m": 158.328746
+   },
+   "NSIDC DAAC": {
+    "tb": 2032.5241015625002,
+    "files_m": 56.656885
+   },
+   "OB.DAAC": {
+    "tb": 1486.949873046875,
+    "files_m": 6.512984
+   },
+   "ORNL DAAC": {
+    "tb": 322.668896484375,
+    "files_m": 0.948072
+   },
+   "PO.DAAC": {
+    "tb": 8143.63521484375,
+    "files_m": 39.459726
+   },
+   "SEDAC": {
+    "tb": 0,
+    "files_m": 0
+   }
+  },
+  "ingest": {
+   "ASDC": {
+    "tb": 2023.34799609375,
+    "files_m": 22.999776
+   },
+   "ASF DAAC": {
+    "tb": 17045.311087890623,
+    "files_m": 20.17543
+   },
+   "CDDIS": {
+    "tb": 96.2272802734375,
+    "files_m": 55.546366
+   },
+   "CSDA": {
+    "tb": 2.1924921875,
+    "files_m": 0.00905
+   },
+   "GESDISC": {
+    "tb": 6973.263030273437,
+    "files_m": 257.218023
+   },
+   "GHRC DAAC": {
+    "tb": 25.98219921875,
+    "files_m": 6.098455
+   },
+   "LAADS DAAC": {
+    "tb": 5485.569885742188,
+    "files_m": 89.904498
+   },
+   "LP DAAC": {
+    "tb": 7267.213541992187,
+    "files_m": 158.320913
+   },
+   "NSIDC DAAC": {
+    "tb": 2032.4085175781252,
+    "files_m": 56.524834
+   },
+   "OB.DAAC": {
+    "tb": 1486.9500595703125,
+    "files_m": 6.512985
+   },
+   "ORNL DAAC": {
+    "tb": 323.1753486328125,
+    "files_m": 0.950264
+   },
+   "PO.DAAC": {
+    "tb": 8143.827080078125,
+    "files_m": 39.482641
+   }
+  },
+  "distribution": {
+   "products_m": {
+    "ASDC": 127.054129,
+    "ASF": 2032.3661779999998,
+    "CDDIS": 1136.6354509999999,
+    "CSDA": 0.13900900000000002,
+    "GESDISC": 1396.7555599999998,
+    "GHRC": 61.820840999999994,
+    "LAADS DAAC": 856.3764430000001,
+    "LP DAAC": 8446.107957,
+    "NSIDC": 1023.304382,
+    "OB.DAAC": 71.399937,
+    "ORNL": 117.524756,
+    "PO.DAAC": 526.600405,
+    "SEDAC": 0.00025,
+    "Total": 15796.085298
+   },
+   "tb": {
+    "ASDC": 15254.847918434172,
+    "ASF": 161166.3336212621,
+    "CDDIS": 624.8489313141439,
+    "CSDA": 6.648604001205053,
+    "GESDISC": 33434.0015223065,
+    "GHRC": 1357.426846862666,
+    "LAADS DAAC": 48206.500866283684,
+    "LP DAAC": 80730.29635011723,
+    "NSIDC": 129740.34174742151,
+    "OB.DAAC": 6160.452314953028,
+    "ORNL": 17221.67446677683,
+    "PO.DAAC": 29377.246124062603,
+    "SEDAC": 0.0007871003454056328,
+    "Total": 523280.6201008961
+   }
+  }
+ },
+ "top10_products": [
+  [
+   "1",
+   "SENTINEL-1A_SLC",
+   "Sentinel-1A slant-range product",
+   "79319553.3085494",
+   "22854716"
+  ],
+  [
+   "2",
+   "SPL3SMP_E",
+   "SMAP Enhanced L3 Radiometer Global and Polar Grid Daily 9 km EASE-Grid Soil Moisture",
+   "58323990.28544323",
+   "8271039"
+  ],
+  [
+   "3",
+   "SPL4SMGP",
+   "SMAP L4 Global 3-hourly 9 km EASE-Grid Surface and Root Zone Soil Moisture Geophysical Data",
+   "43736531.77936792",
+   "42119952"
+  ],
+  [
+   "4",
+   "SENTINEL-1B_SLC",
+   "Sentinel-1B slant-range product",
+   "16511123.9203785",
+   "4203670"
+  ],
+  [
+   "5",
+   "DAYMET_DAILY_V4R1_2129",
+   "Daymet: Daily Surface Weather Data on a 1-km Grid for North America R1",
+   "14392366.753443725",
+   "64229544"
+  ],
+  [
+   "6",
+   "ATL03",
+   "ATLAS/ICESat-2 L2A Global Geolocated Photon Data",
+   "13844366.45721878",
+   "66538067"
+  ],
+  [
+   "7",
+   "HLSS30",
+   "HLS Sentinel-2 Multi-spectral Instrument Surface Reflectance Daily Global 30m",
+   "10716520.6424018",
+   "1525891651"
+  ],
+  [
+   "8",
+   "SWOT_L1B_HR_SLC_D",
+   "SWOT Level 1B High-Rate Single-look Complex Data Product",
+   "9983191.63812575",
+   "10992564"
+  ],
+  [
+   "9",
+   "SENTINEL-1A_RAW",
+   "Sentinel-1A level zero product",
+   "9274365.27427281",
+   "4556681"
+  ],
+  [
+   "10",
+   "MOD13Q1",
+   "MODIS/Terra Vegetation Indices 16-Day L3 Global 250m ISIN Grid",
+   "9223917.355090274",
+   "18601668"
+  ],
+  [
+   "1",
+   "OPERA_L2_RTC-S1_V1",
+   "OPERA Radiometric Terrain Corrected SAR Backscatter from Sentinel-1 validated product (Version 1)",
+   "1823277412",
+   "5370109.40249255"
+  ],
+  [
+   "2",
+   "HLSS30",
+   "HLS Sentinel-2 Multi-spectral Instrument Surface Reflectance Daily Global 30m",
+   "1525891651",
+   "10716520.6424018"
+  ],
+  [
+   "3",
+   "HLSL30",
+   "HLS Landsat Operational Land Imager Surface Reflectance and TOA Brightness Daily Global 30m",
+   "874528688",
+   "5656984.542303323"
+  ],
+  [
+   "4",
+   "GPM_3IMERGHH",
+   "GPM IMERG Final Precipitation L3 Half Hourly 0.1 degree x 0.1 degree",
+   "390025911",
+   "1442081.3056061724"
+  ],
+  [
+   "5",
+   "MOD10A1",
+   "MODIS/Terra Snow Cover Daily L3 Global 500m SIN Grid",
+   "378169587",
+   "3416270.5974503057"
+  ],
+  [
+   "6",
+   "ECO_L2T_LSTE",
+   "ECOSTRESS Tiled Land Surface Temperature and Emissivity Instantaneous L2 Global 70 m",
+   "344214195",
+   "233359.627916552"
+  ],
+  [
+   "7",
+   "GNSS_HIGHRATE_D",
+   "GNSS High-Rate Compact Observation Data",
+   "311381703",
+   "194778.693589579"
+  ],
+  [
+   "8",
+   "ECO_L1CT_RAD",
+   "ECOSTRESS Tiled Top of Atmosphere Calibrated Radiance Instantaneous L1C Global 70 m",
+   "300062179",
+   "225141.8473557894"
+  ],
+  [
+   "9",
+   "OPERA_L3_DSWX-HLS_V1",
+   "OPERA Dynamic Surface Water Extent from Harmonized Landsat Sentinel-2 product (Version 1)",
+   "223913932",
+   "630186.194560648"
+  ],
+  [
+   "10",
+   "GNSS_HOURLY_D",
+   "GNSS Hourly Compact Observation Data",
+   "189577679",
+   "26354.0472529428"
+  ]
+ ]
+}

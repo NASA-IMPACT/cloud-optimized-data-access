@@ -414,6 +414,14 @@ dependencies = [
     { name = "zarrs" },
 ]
 
+[package.optional-dependencies]
+dmrpp = [
+    { name = "aiohttp" },
+    { name = "fsspec" },
+    { name = "kerchunk" },
+    { name = "virtualizarr", extra = ["hdf4"] },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
@@ -421,12 +429,15 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp", marker = "extra == 'dmrpp'" },
     { name = "dask" },
     { name = "earthaccess" },
     { name = "earthaccess-auth", extras = ["icechunk"], specifier = ">=0.4.0" },
+    { name = "fsspec", marker = "extra == 'dmrpp'" },
     { name = "h5netcdf" },
     { name = "h5py" },
     { name = "icechunk", specifier = ">=2.2.2" },
+    { name = "kerchunk", marker = "extra == 'dmrpp'", specifier = "==0.2.10" },
     { name = "matplotlib" },
     { name = "numpy" },
     { name = "obspec-utils", specifier = ">=0.9.0" },
@@ -436,10 +447,12 @@ requires-dist = [
     { name = "s3fs" },
     { name = "scipy" },
     { name = "virtualizarr", specifier = ">=2.7.1" },
+    { name = "virtualizarr", extras = ["hdf4"], marker = "extra == 'dmrpp'" },
     { name = "xarray" },
     { name = "zarr" },
     { name = "zarrs", specifier = ">=0.2.3" },
 ]
+provides-extras = ["dmrpp"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest" }]
@@ -918,6 +931,22 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d3/59/322338183ecda247fb5d1763a6cbe46eff7222eaeebafd9fa65d4bf5cb11/jmespath-1.1.0.tar.gz", hash = "sha256:472c87d80f36026ae83c6ddd0f1d05d4e510134ed462851fd5f754c8c3cbb88d", size = 27377, upload-time = "2026-01-22T16:35:26.279Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/14/2f/967ba146e6d58cf6a652da73885f52fc68001525b4197effc174321d70b4/jmespath-1.1.0-py3-none-any.whl", hash = "sha256:a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64", size = 20419, upload-time = "2026-01-22T16:35:24.919Z" },
+]
+
+[[package]]
+name = "kerchunk"
+version = "0.2.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "fsspec" },
+    { name = "numcodecs" },
+    { name = "numpy" },
+    { name = "ujson" },
+    { name = "zarr" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5c/a0/ebeca522912e68f360117404a6b2f740d4b0a343d98e9586377a2fd21567/kerchunk-0.2.10.tar.gz", hash = "sha256:aae63c0fe4ca2e97025f026578a0577545011fe6679751392c815e0d1d6bf954", size = 716526, upload-time = "2026-03-30T13:49:05.303Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/e4/3c356a9ea448a48caa5e44cd51293f7e896cd606f2ef86da96f5d61cc427/kerchunk-0.2.10-py3-none-any.whl", hash = "sha256:7fdaa77dae25c75d3ec9402c49208f37ae51d346ab082724e3e32608438f8c66", size = 68490, upload-time = "2026-03-30T13:49:03.855Z" },
 ]
 
 [[package]]
@@ -2227,6 +2256,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/39/5b/afea95b845acdd17f324a753200a0b8b59d8f2548ff3b5c29fa10817a51d/virtualizarr-2.8.0.tar.gz", hash = "sha256:b630dcb8684dbc8e2ad36126a42ee0d67a7cddbfb8e542c1ff9e90f486c159b2", size = 917965, upload-time = "2026-10-14T21:57:59.244Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d0/24/e77f17a9fe6d43162403cc73bbdbd03691da8689f1c90e91aa30a6235bf5/virtualizarr-2.8.0-py3-none-any.whl", hash = "sha256:beaa972560095e1201c9f0ba238b09ff1d9c49f902f7261733561e0c70b8ba75", size = 817358, upload-time = "2026-10-14T21:57:57.383Z" },
+]
+
+[package.optional-dependencies]
+hdf4 = [
+    { name = "aiohttp" },
+    { name = "fsspec" },
+    { name = "kerchunk" },
+    { name = "requests" },
+    { name = "s3fs" },
 ]
 
 [[package]]
