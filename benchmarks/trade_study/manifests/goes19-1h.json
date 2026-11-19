@@ -1,0 +1,84 @@
+{
+  "created_at": "2026-11-13T03:43:22.478168+00:00",
+  "dataset": "goes19",
+  "window": "1h",
+  "discovery_kind": "s3-list",
+  "discovery_seconds": 0.1485976600088179,
+  "environment": {
+    "python": "3.12.16",
+    "git_sha": "c087c3775b65c95cd6c2b9da44322a32aa0e8e73",
+    "uv_lock_sha256": "2749b5dc37551a5f9bb5b47d6cf9b129c64bd7782dded4a8728dd318e585de0e",
+    "packages": {
+      "earthaccess": "0.19.0",
+      "earthaccess-auth": "0.4.0",
+      "icechunk": "2.3.0",
+      "xarray": "2026.9.0",
+      "zarr": "3.4.1",
+      "h5py": "3.16.0",
+      "h5netcdf": "1.8.1",
+      "s3fs": "2026.9.0",
+      "obstore": "0.12.0",
+      "obspec-utils": "0.9.0",
+      "virtualizarr": "2.8.0",
+      "numpy": "2.5.4",
+      "dask": "2026.8.0"
+    }
+  },
+  "snapshot_id": "KZJJX497NQXWN7RDAV8G",
+  "index_location": "local-disk",
+  "grid": {
+    "x": {
+      "scale": 5.6000000768108293e-05,
+      "offset": -0.15184399485588074,
+      "size": 5424
+    },
+    "y": {
+      "scale": -5.6000000768108293e-05,
+      "offset": 0.15184399485588074,
+      "size": 5424
+    },
+    "perspective_point_height": 35786023.0,
+    "semi_major_axis": 6378137.0,
+    "semi_minor_axis": 6356752.31414,
+    "longitude_of_projection_origin": -75.0
+  },
+  "granules": [
+    {
+      "granule_ur": "OR_ABI-L2-CMIPF-M6C13_G19_s20263001500205_e20263001509526_c20263001509579.nc",
+      "start_time": "2026-10-27T15:00:20Z",
+      "source_url": "s3://noaa-goes19/ABI-L2-CMIPF/2026/300/15/OR_ABI-L2-CMIPF-M6C13_G19_s20263001500205_e20263001509526_c20263001509579.nc",
+      "source_size_mb": 24.396038
+    },
+    {
+      "granule_ur": "OR_ABI-L2-CMIPF-M6C13_G19_s20263001510205_e20263001519525_c20263001519591.nc",
+      "start_time": "2026-10-27T15:10:20Z",
+      "source_url": "s3://noaa-goes19/ABI-L2-CMIPF/2026/300/15/OR_ABI-L2-CMIPF-M6C13_G19_s20263001510205_e20263001519525_c20263001519591.nc",
+      "source_size_mb": 24.411233
+    },
+    {
+      "granule_ur": "OR_ABI-L2-CMIPF-M6C13_G19_s20263001520205_e20263001529526_c20263001529596.nc",
+      "start_time": "2026-10-27T15:20:20Z",
+      "source_url": "s3://noaa-goes19/ABI-L2-CMIPF/2026/300/15/OR_ABI-L2-CMIPF-M6C13_G19_s20263001520205_e20263001529526_c20263001529596.nc",
+      "source_size_mb": 24.428219
+    },
+    {
+      "granule_ur": "OR_ABI-L2-CMIPF-M6C13_G19_s20263001530206_e20263001539525_c20263001539595.nc",
+      "start_time": "2026-10-27T15:30:20Z",
+      "source_url": "s3://noaa-goes19/ABI-L2-CMIPF/2026/300/15/OR_ABI-L2-CMIPF-M6C13_G19_s20263001530206_e20263001539525_c20263001539595.nc",
+      "source_size_mb": 24.448753
+    },
+    {
+      "granule_ur": "OR_ABI-L2-CMIPF-M6C13_G19_s20263001540206_e20263001549526_c20263001549594.nc",
+      "start_time": "2026-10-27T15:40:20Z",
+      "source_url": "s3://noaa-goes19/ABI-L2-CMIPF/2026/300/15/OR_ABI-L2-CMIPF-M6C13_G19_s20263001540206_e20263001549526_c20263001549594.nc",
+      "source_size_mb": 24.466299
+    },
+    {
+      "granule_ur": "OR_ABI-L2-CMIPF-M6C13_G19_s20263001550206_e20263001559525_c20263001559581.nc",
+      "start_time": "2026-10-27T15:50:20Z",
+      "source_url": "s3://noaa-goes19/ABI-L2-CMIPF/2026/300/15/OR_ABI-L2-CMIPF-M6C13_G19_s20263001550206_e20263001559525_c20263001559581.nc",
+      "source_size_mb": 24.486107
+    }
+  ],
+  "store_build_seconds": 7.404072591976728
+}

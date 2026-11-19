@@ -1,0 +1,107 @@
+{
+  "created_at": "2026-11-17T18:18:06.305353+00:00",
+  "rtol": 1e-06,
+  "verdicts": {
+    "tuned_h5py": "reference",
+    "virtual_dmrpp": "pass",
+    "virtual_icechunk": "pass"
+  },
+  "rows": [
+    {
+      "case": "churro:10:1d",
+      "arm": "virtual_icechunk",
+      "reference": "tuned_h5py",
+      "observation": 0,
+      "status": "exact",
+      "max_rel_diff": 0.0
+    },
+    {
+      "case": "churro:10:1d",
+      "arm": "virtual_dmrpp",
+      "reference": "tuned_h5py",
+      "observation": 0,
+      "status": "exact",
+      "max_rel_diff": 0.0
+    },
+    {
+      "case": "churro:10:1d",
+      "arm": "virtual_icechunk",
+      "reference": "tuned_h5py",
+      "observation": 7,
+      "status": "exact",
+      "max_rel_diff": 0.0
+    },
+    {
+      "case": "churro:10:1d",
+      "arm": "virtual_dmrpp",
+      "reference": "tuned_h5py",
+      "observation": 7,
+      "status": "exact",
+      "max_rel_diff": 0.0
+    },
+    {
+      "case": "churro:10:1d",
+      "arm": "virtual_icechunk",
+      "reference": "tuned_h5py",
+      "observation": 14,
+      "status": "exact",
+      "max_rel_diff": 0.0
+    },
+    {
+      "case": "churro:10:1d",
+      "arm": "virtual_dmrpp",
+      "reference": "tuned_h5py",
+      "observation": 14,
+      "status": "exact",
+      "max_rel_diff": 0.0
+    },
+    {
+      "case": "box:100:1d",
+      "arm": "virtual_icechunk",
+      "reference": "tuned_h5py",
+      "observation": 0,
+      "status": "exact",
+      "max_rel_diff": 0.0
+    },
+    {
+      "case": "box:100:1d",
+      "arm": "virtual_dmrpp",
+      "reference": "tuned_h5py",
+      "observation": 0,
+      "status": "exact",
+      "max_rel_diff": 0.0
+    },
+    {
+      "case": "box:100:1d",
+      "arm": "virtual_icechunk",
+      "reference": "tuned_h5py",
+      "observation": 7,
+      "status": "exact",
+      "max_rel_diff": 0.0
+    },
+    {
+      "case": "box:100:1d",
+      "arm": "virtual_dmrpp",
+      "reference": "tuned_h5py",
+      "observation": 7,
+      "status": "exact",
+      "max_rel_diff": 0.0
+    },
+    {
+      "case": "box:100:1d",
+      "arm": "virtual_icechunk",
+      "reference": "tuned_h5py",
+      "observation": 14,
+      "status": "exact",
+      "max_rel_diff": 0.0
+    },
+    {
+      "case": "box:100:1d",
+      "arm": "virtual_dmrpp",
+      "reference": "tuned_h5py",
+      "observation": 14,
+      "status": "exact",
+      "max_rel_diff": 0.0
+    }
+  ]
+}

@@ -1,0 +1,314 @@
+{
+  "created_at": "2026-11-13T04:15:16.756030+00:00",
+  "dataset": "goes19",
+  "window": "1h",
+  "max_bytes": 67108864,
+  "layout_from": "OR_ABI-L2-CMIPF-M6C13_G19_s20263001500205_e20263001509526_c20263001509579.nc",
+  "assumption": "every granule has the first granule's chunk layout",
+  "probes": {
+    "rtt_ms_median": 21.53320104116574,
+    "bandwidth_mb_s": 23.06003083314062
+  },
+  "rows": [
+    {
+      "case": "pancake:1:1h",
+      "granules": 1,
+      "max_gap_bytes": -1,
+      "requests": 226,
+      "bytes_read": 24224614,
+      "bytes_needed": 24224614,
+      "over_read": 0.0,
+      "floor_seconds": 1.6749650682561124
+    },
+    {
+      "case": "pancake:1:1h",
+      "granules": 1,
+      "max_gap_bytes": 0,
+      "requests": 4,
+      "bytes_read": 24224614,
+      "bytes_needed": 24224614,
+      "over_read": 0.0,
+      "floor_seconds": 1.0720354391034717
+    },
+    {
+      "case": "pancake:1:1h",
+      "granules": 1,
+      "max_gap_bytes": 65536,
+      "requests": 1,
+      "bytes_read": 24235078,
+      "bytes_needed": 24224614,
+      "over_read": 0.0004319573471840421,
+      "floor_seconds": 1.072489211263436
+    },
+    {
+      "case": "pancake:1:1h",
+      "granules": 1,
+      "max_gap_bytes": 1048576,
+      "requests": 1,
+      "bytes_read": 24235078,
+      "bytes_needed": 24224614,
+      "over_read": 0.0004319573471840421,
+      "floor_seconds": 1.072489211263436
+    },
+    {
+      "case": "pancake:1:1h",
+      "granules": 1,
+      "max_gap_bytes": 8388608,
+      "requests": 1,
+      "bytes_read": 24235078,
+      "bytes_needed": 24224614,
+      "over_read": 0.0004319573471840421,
+      "floor_seconds": 1.072489211263436
+    },
+    {
+      "case": "pancake:15:1h",
+      "granules": 6,
+      "max_gap_bytes": -1,
+      "requests": 1356,
+      "bytes_read": 145347684,
+      "bytes_needed": 145347684,
+      "over_read": 0.0,
+      "floor_seconds": 9.96365760537201
+    },
+    {
+      "case": "pancake:15:1h",
+      "granules": 6,
+      "max_gap_bytes": 0,
+      "requests": 24,
+      "bytes_read": 145347684,
+      "bytes_needed": 145347684,
+      "over_read": 0.0,
+      "floor_seconds": 6.367613031497332
+    },
+    {
+      "case": "pancake:15:1h",
+      "granules": 6,
+      "max_gap_bytes": 65536,
+      "requests": 6,
+      "bytes_read": 145410468,
+      "bytes_needed": 145347684,
+      "over_read": 0.0004319573471840421,
+      "floor_seconds": 6.327269262374787
+    },
+    {
+      "case": "pancake:15:1h",
+      "granules": 6,
+      "max_gap_bytes": 1048576,
+      "requests": 6,
+      "bytes_read": 145410468,
+      "bytes_needed": 145347684,
+      "over_read": 0.0004319573471840421,
+      "floor_seconds": 6.327269262374787
+    },
+    {
+      "case": "pancake:15:1h",
+      "granules": 6,
+      "max_gap_bytes": 8388608,
+      "requests": 6,
+      "bytes_read": 145410468,
+      "bytes_needed": 145347684,
+      "over_read": 0.0004319573471840421,
+      "floor_seconds": 6.327269262374787
+    },
+    {
+      "case": "churro:10:1h",
+      "granules": 6,
+      "max_gap_bytes": -1,
+      "requests": 36,
+      "bytes_read": 3848946,
+      "bytes_needed": 3848946,
+      "over_read": 0.0,
+      "floor_seconds": 0.2745758427446625
+    },
+    {
+      "case": "churro:10:1h",
+      "granules": 6,
+      "max_gap_bytes": 0,
+      "requests": 6,
+      "bytes_read": 3848946,
+      "bytes_needed": 3848946,
+      "over_read": 0.0,
+      "floor_seconds": 0.18844303857999958
+    },
+    {
+      "case": "churro:10:1h",
+      "granules": 6,
+      "max_gap_bytes": 65536,
+      "requests": 6,
+      "bytes_read": 3848946,
+      "bytes_needed": 3848946,
+      "over_read": 0.0,
+      "floor_seconds": 0.18844303857999958
+    },
+    {
+      "case": "churro:10:1h",
+      "granules": 6,
+      "max_gap_bytes": 1048576,
+      "requests": 6,
+      "bytes_read": 3848946,
+      "bytes_needed": 3848946,
+      "over_read": 0.0,
+      "floor_seconds": 0.18844303857999958
+    },
+    {
+      "case": "churro:10:1h",
+      "granules": 6,
+      "max_gap_bytes": 8388608,
+      "requests": 6,
+      "bytes_read": 3848946,
+      "bytes_needed": 3848946,
+      "over_read": 0.0,
+      "floor_seconds": 0.18844303857999958
+    },
+    {
+      "case": "churro:250:1h",
+      "granules": 6,
+      "max_gap_bytes": -1,
+      "requests": 54,
+      "bytes_read": 5694558,
+      "bytes_needed": 5694558,
+      "over_read": 0.0,
+      "floor_seconds": 0.39767735030255075
+    },
+    {
+      "case": "churro:250:1h",
+      "granules": 6,
+      "max_gap_bytes": 0,
+      "requests": 6,
+      "bytes_read": 5694558,
+      "bytes_needed": 5694558,
+      "over_read": 0.0,
+      "floor_seconds": 0.2684781440555563
+    },
+    {
+      "case": "churro:250:1h",
+      "granules": 6,
+      "max_gap_bytes": 65536,
+      "requests": 6,
+      "bytes_read": 5694558,
+      "bytes_needed": 5694558,
+      "over_read": 0.0,
+      "floor_seconds": 0.2684781440555563
+    },
+    {
+      "case": "churro:250:1h",
+      "granules": 6,
+      "max_gap_bytes": 1048576,
+      "requests": 6,
+      "bytes_read": 5694558,
+      "bytes_needed": 5694558,
+      "over_read": 0.0,
+      "floor_seconds": 0.2684781440555563
+    },
+    {
+      "case": "churro:250:1h",
+      "granules": 6,
+      "max_gap_bytes": 8388608,
+      "requests": 6,
+      "bytes_read": 5694558,
+      "bytes_needed": 5694558,
+      "over_read": 0.0,
+      "floor_seconds": 0.2684781440555563
+    },
+    {
+      "case": "box:100:1h",
+      "granules": 6,
+      "max_gap_bytes": -1,
+      "requests": 18,
+      "bytes_read": 1916892,
+      "bytes_needed": 1916892,
+      "over_read": 0.0,
+      "floor_seconds": 0.1477257712483528
+    },
+    {
+      "case": "box:100:1h",
+      "granules": 6,
+      "max_gap_bytes": 0,
+      "requests": 6,
+      "bytes_read": 1916892,
+      "bytes_needed": 1916892,
+      "over_read": 0.0,
+      "floor_seconds": 0.1046593691660213
+    },
+    {
+      "case": "box:100:1h",
+      "granules": 6,
+      "max_gap_bytes": 65536,
+      "requests": 6,
+      "bytes_read": 1916892,
+      "bytes_needed": 1916892,
+      "over_read": 0.0,
+      "floor_seconds": 0.1046593691660213
+    },
+    {
+      "case": "box:100:1h",
+      "granules": 6,
+      "max_gap_bytes": 1048576,
+      "requests": 6,
+      "bytes_read": 1916892,
+      "bytes_needed": 1916892,
+      "over_read": 0.0,
+      "floor_seconds": 0.1046593691660213
+    },
+    {
+      "case": "box:100:1h",
+      "granules": 6,
+      "max_gap_bytes": 8388608,
+      "requests": 6,
+      "bytes_read": 1916892,
+      "bytes_needed": 1916892,
+      "over_read": 0.0,
+      "floor_seconds": 0.1046593691660213
+    },
+    {
+      "case": "batch:0:1h",
+      "granules": 6,
+      "max_gap_bytes": -1,
+      "requests": 1356,
+      "bytes_read": 145347684,
+      "bytes_needed": 145347684,
+      "over_read": 0.0,
+      "floor_seconds": 9.96365760537201
+    },
+    {
+      "case": "batch:0:1h",
+      "granules": 6,
+      "max_gap_bytes": 0,
+      "requests": 24,
+      "bytes_read": 145347684,
+      "bytes_needed": 145347684,
+      "over_read": 0.0,
+      "floor_seconds": 6.367613031497332
+    },
+    {
+      "case": "batch:0:1h",
+      "granules": 6,
+      "max_gap_bytes": 65536,
+      "requests": 6,
+      "bytes_read": 145410468,
+      "bytes_needed": 145347684,
+      "over_read": 0.0004319573471840421,
+      "floor_seconds": 6.327269262374787
+    },
+    {
+      "case": "batch:0:1h",
+      "granules": 6,
+      "max_gap_bytes": 1048576,
+      "requests": 6,
+      "bytes_read": 145410468,
+      "bytes_needed": 145347684,
+      "over_read": 0.0004319573471840421,
+      "floor_seconds": 6.327269262374787
+    },
+    {
+      "case": "batch:0:1h",
+      "granules": 6,
+      "max_gap_bytes": 8388608,
+      "requests": 6,
+      "bytes_read": 145410468,
+      "bytes_needed": 145347684,
+      "over_read": 0.0004319573471840421,
+      "floor_seconds": 6.327269262374787
+    }
+  ]
+}

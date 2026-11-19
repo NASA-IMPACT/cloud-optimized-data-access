@@ -218,3 +218,28 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# cloud-optimized-data-access
+node_modules/
+decks/*/dist/
+.env*
+!.env*.sample
+out/
+benchmark-scratch/
+.superpowers/
+
+# OS and editor litter
+.DS_Store
+Thumbs.db
+*~
+.idea/
+.vscode/
+
+# never commit binary coordinate dumps; the manifest records the grid
+*.npz
+
+# locally built virtual stores (rebuild with `run.py build-store`)
+benchmarks/trade_study/stores/
+
+# derived from results.jsonl by `run.py report`; summary.md is the committed copy
+results/trade_study/*/summary.json

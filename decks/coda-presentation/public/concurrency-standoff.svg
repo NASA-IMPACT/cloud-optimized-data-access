@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 500" role="img" aria-labelledby="t">
+  <title id="t">Three stick figures pointing at each other, labelled Dask task graph, FSSpec cache and Zarr concurrency</title>
+  <!-- Drawn for this deck: who is in charge of concurrency? Each layer points at the other two. -->
+  <g fill="none" stroke="#c9c9d1" stroke-width="2" stroke-dasharray="3 7" stroke-linecap="round">
+    <line x1="200" y1="335" x2="400" y2="335"/>
+    <line x1="174" y1="280" x2="256" y2="180"/>
+    <line x1="426" y1="280" x2="344" y2="180"/>
+  </g>
+  <g fill="none" stroke="#3f3f48" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- top: FSSpec cache -->
+    <circle cx="300" cy="84" r="20"/>
+    <path d="M300 104 V180 M300 180 L278 235 M300 180 L322 235"/>
+    <path d="M300 125 L262 172 M300 125 L338 172"/>
+    <!-- left: Dask task graph -->
+    <circle cx="130" cy="294" r="20"/>
+    <path d="M130 314 V390 M130 390 L108 445 M130 390 L152 445"/>
+    <path d="M130 335 L190 335 M130 335 L168 288"/>
+    <!-- right: Zarr concurrency -->
+    <circle cx="470" cy="294" r="20"/>
+    <path d="M470 314 V390 M470 390 L448 445 M470 390 L492 445"/>
+    <path d="M470 335 L410 335 M470 335 L432 288"/>
+  </g>
+  <g font-family="Inter, Helvetica, Arial, sans-serif" font-size="24" font-weight="700" text-anchor="middle">
+    <text x="300" y="42" fill="#d97e6a">FSSpec cache</text>
+    <text x="130" y="484" fill="#d97e6a">Dask task graph</text>
+    <text x="470" y="484" fill="#952f7c">Zarr concurrency</text>
+  </g>
+</svg>

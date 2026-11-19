@@ -1,0 +1,21 @@
+{
+  "created_at": "2026-11-17T16:59:43.360650+00:00",
+  "dataset": "goes19",
+  "transport": "s3",
+  "rtt_ms_median": 21.526222000829875,
+  "bandwidth_mb_s": 18.743187833376744,
+  "bandwidth_single_stream_mb_s": 18.743187833376744,
+  "bandwidth_concurrent_mb_s": 18.71097272465005,
+  "host": {
+    "cpu_model": "Intel(R) Core(TM) i7-6820HK CPU @ 2.70GHz",
+    "nproc": 8,
+    "mem_total_bytes": 32257413120,
+    "instance_type": null,
+    "instance_type_reason": "imds unreachable",
+    "availability_zone": null,
+    "host_kind": "other"
+  },
+  "client_region": null,
+  "data_region": "us-east-1",
+  "in_region": false
+}
