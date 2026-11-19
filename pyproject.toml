@@ -1,0 +1,51 @@
+[project]
+name = "cloud-optimized-data-access"
+version = "0.1.0"
+description = "ODSI team contributions to the Cloud-Optimized Data Access trade study: benchmarks and decks"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = [
+    "earthaccess",
+    "earthaccess-auth[icechunk]>=0.4.0",
+    "icechunk>=2.2.2",
+    "xarray",
+    "zarr",
+    "h5py",
+    "h5netcdf",
+    "s3fs",
+    "obstore",
+    "obspec-utils>=0.9.0",
+    "virtualizarr>=2.7.1",
+    "psutil",
+    "numpy",
+    "pandas",
+    "scipy",
+    "matplotlib",
+    "dask",
+    "zarrs>=0.2.3",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+# pyflakes and pycodestyle, import order, likely bugs, outdated syntax, blanket excepts
+select = ["E", "F", "I", "B", "UP", "BLE"]
+
+[tool.ruff.lint.per-file-ignores]
+# the scope is a table of prose: one row per line reads better than wrapped strings
+"benchmarks/trade_study/scope.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.uv]
+package = false
+# certifi carries CA-bundle CVE fixes; let it past any exclude-newer cutoff
+# (global --exclude-newer / UV_EXCLUDE_NEWER still applies to everything else).
+exclude-newer-package = { certifi = "2027-01-01" }

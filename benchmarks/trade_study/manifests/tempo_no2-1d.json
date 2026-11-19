@@ -1,0 +1,184 @@
+{
+  "created_at": "2026-11-13T04:41:18.132209+00:00",
+  "dataset": "tempo_no2",
+  "window": "1d",
+  "discovery_kind": "cmr",
+  "discovery_seconds": 0.8453256419743411,
+  "environment": {
+    "python": "3.12.16",
+    "git_sha": "43417211f257c65d2d6f3a0e919f89e3a66f016d",
+    "uv_lock_sha256": "a4c7199f8e2c25f0ce6fcd95be0037e2c8f94777e21ce4cf5909a335cb49be6e",
+    "packages": {
+      "earthaccess": "0.19.0",
+      "earthaccess-auth": "0.4.0",
+      "icechunk": "2.3.0",
+      "xarray": "2026.9.0",
+      "zarr": "3.4.1",
+      "h5py": "3.16.0",
+      "h5netcdf": "1.8.1",
+      "s3fs": "2026.9.0",
+      "obstore": "0.12.0",
+      "obspec-utils": "0.9.0",
+      "virtualizarr": "2.8.0",
+      "numpy": "2.5.4",
+      "dask": "2026.8.0"
+    }
+  },
+  "snapshot_id": "XTKDDRWEJ1C7DGRTHZ3G",
+  "index_location": "s3 (public mirror, us-west-2)",
+  "grid": {
+    "latitude": {
+      "first": 14.010000228881836,
+      "last": 72.98999786376953,
+      "size": 2950
+    },
+    "longitude": {
+      "first": -167.99000549316406,
+      "last": -13.010000228881836,
+      "size": 7750
+    }
+  },
+  "granules": [
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250313T232827Z_S014.nc",
+      "concept_id": "G4125361084-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-13T23:28:27Z",
+      "end_time": "2025-03-14T00:08:16Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.13/TEMPO_NO2_L3_V04_20250313T232827Z_S014.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T115746Z_S002.nc",
+      "concept_id": "G4125449150-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T11:57:46Z",
+      "end_time": "2025-03-14T12:37:35Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T115746Z_S002.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T123754Z_S003.nc",
+      "concept_id": "G4125504334-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T12:37:54Z",
+      "end_time": "2025-03-14T13:17:43Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T123754Z_S003.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T131802Z_S004.nc",
+      "concept_id": "G4125593962-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T13:18:02Z",
+      "end_time": "2025-03-14T14:17:43Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T131802Z_S004.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T141802Z_S005.nc",
+      "concept_id": "G4125653816-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T14:18:02Z",
+      "end_time": "2025-03-14T15:17:43Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T141802Z_S005.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T151802Z_S006.nc",
+      "concept_id": "G4125743275-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T15:18:02Z",
+      "end_time": "2025-03-14T16:17:43Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T151802Z_S006.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T161802Z_S007.nc",
+      "concept_id": "G4125826038-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T16:18:02Z",
+      "end_time": "2025-03-14T17:17:43Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T161802Z_S007.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T171802Z_S008.nc",
+      "concept_id": "G4125883494-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T17:18:02Z",
+      "end_time": "2025-03-14T18:17:43Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T171802Z_S008.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T181802Z_S009.nc",
+      "concept_id": "G4125959577-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T18:18:02Z",
+      "end_time": "2025-03-14T19:17:43Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T181802Z_S009.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T191802Z_S010.nc",
+      "concept_id": "G4126035541-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T19:18:02Z",
+      "end_time": "2025-03-14T20:17:43Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T191802Z_S010.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T201802Z_S011.nc",
+      "concept_id": "G4126158577-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T20:18:02Z",
+      "end_time": "2025-03-14T21:17:43Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T201802Z_S011.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T211802Z_S012.nc",
+      "concept_id": "G4126250106-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T21:18:02Z",
+      "end_time": "2025-03-14T22:17:43Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T211802Z_S012.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T221802Z_S013.nc",
+      "concept_id": "G4126404963-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T22:18:02Z",
+      "end_time": "2025-03-14T23:17:43Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T221802Z_S013.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T231802Z_S014.nc",
+      "concept_id": "G4126431727-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T23:18:02Z",
+      "end_time": "2025-03-14T23:57:51Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T231802Z_S014.nc",
+      "source_size_mb": null
+    },
+    {
+      "granule_ur": "TEMPO_NO2_L3_V04_20250314T235810Z_S015.nc",
+      "concept_id": "G4126479018-LARC_CLOUD",
+      "revision_id": 2,
+      "start_time": "2025-03-14T23:58:10Z",
+      "end_time": "2025-03-15T00:37:59Z",
+      "source_url": "s3://asdc-prod-protected/TEMPO/TEMPO_NO2_L3_V04/2025.03.14/TEMPO_NO2_L3_V04_20250314T235810Z_S015.nc",
+      "source_size_mb": null
+    }
+  ],
+  "dmrpp_snapshot_ids": {
+    "https": "34HX17Z7KF57WPZ3E3NG"
+  },
+  "dmrpp_store_build_seconds": {
+    "https": 172.18491507600993
+  }
+}
