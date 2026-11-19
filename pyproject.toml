@@ -26,6 +26,16 @@ dependencies = [
     "zarrs>=0.2.3",
 ]
 
+[project.optional-dependencies]
+# The DMR++ study (dmrpp/): `uv run --extra dmrpp python -m dmrpp.verify ...`.
+# kerchunk is pinned because dmrpp/verify/hdf4.py corrects that version's HDF4 decoder.
+dmrpp = [
+    "aiohttp",
+    "fsspec",
+    "kerchunk==0.2.10",
+    "virtualizarr[hdf4]",
+]
+
 [dependency-groups]
 dev = ["pytest"]
 
@@ -40,6 +50,9 @@ select = ["E", "F", "I", "B", "UP", "BLE"]
 [tool.ruff.lint.per-file-ignores]
 # the scope is a table of prose: one row per line reads better than wrapped strings
 "benchmarks/trade_study/scope.py" = ["E501"]
+# report lines, usage examples and XML fixtures that read worse wrapped
+"dmrpp/**" = ["E501"]
+"tests/dmrpp/**" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
