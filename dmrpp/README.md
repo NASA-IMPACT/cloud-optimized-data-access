@@ -11,8 +11,7 @@ Staleness is where it started, not all it checks: the verifier also compares
 how a sidecar describes each array (shape, data type, filters) with the file,
 and can compare the values Hyrax serves with a direct read.
 
-Results are written to `results/dmrpp/`. This branch has the code only; the
-survey's and the verifier's results are added separately.
+Results are in `results/dmrpp/`; start with `survey/summary.md`.
 
 ## The pipeline
 
@@ -41,10 +40,18 @@ uv run --extra dmrpp python -m dmrpp.verify results/dmrpp/survey/sampled_with_si
 
 Each command's `--help` has its options, and for the verifier the meaning
 of every verdict. `report` and `sample` need no extra and no network: they
-rebuild their files from the survey's `granules.jsonl.gz`.
+rebuild their files from the committed `granules.jsonl.gz`, and a test
+fails when a committed file is not what they write today.
 
 `kerchunk` is pinned in the extra because `verify/hdf4.py` corrects that
 version's HDF4 decoder; move the pin and the corrections together.
+
+## Results
+
+| Path | What |
+|---|---|
+| `results/dmrpp/survey/` | The survey of 2026-11-13: `granules.jsonl.gz` (one row per sampled granule), and the three files `report` and the one file `sample` derive from it. It stopped at 3,941 of 5,617 collections; `run` resumes where it left off. |
+| `results/dmrpp/verify/` | `verdicts.csv`: one row per granule with its newest verdict, and the run it came from. `python -m dmrpp.verify.merge` folds a new run in. Its README says which rows are findings and which are the verifier's limits. |
 
 ## Map of the code
 
